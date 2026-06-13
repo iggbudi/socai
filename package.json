@@ -1,0 +1,28 @@
+{
+  "name": "socai-my-id",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Node.js app for socai.my.id",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "bot": "node telegram-bot.js",
+    "dev": "node server.js & node telegram-bot.js"
+  },
+  "dependencies": {
+    "@earendil-works/pi-coding-agent": "^0.75.5",
+    "bcryptjs": "^3.0.3",
+    "connect-pg-simple": "^10.0.0",
+    "dotenv": "^17.4.2",
+    "express": "^5.1.0",
+    "express-session": "^1.19.0",
+    "multer": "^2.1.1",
+    "pg": "^8.21.0",
+    "telegraf": "^4.16.3",
+    "typebox": "^1.1.38"
+  },
+  "engines": {
+    "node": ">=24"
+  }
+}

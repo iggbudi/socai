@@ -1,0 +1,12 @@
+node_modules/
+.env
+
+# Runtime files
+.pi/*.pid
+.pi/*.log
+.pi/subagents/runs/
+telegram-users.json
+
+# User/generated content
+public/uploads/
+backups/
