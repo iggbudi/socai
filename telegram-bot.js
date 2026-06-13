@@ -4,12 +4,15 @@ import fs from 'fs';
 import path from 'path';
 import crypto from 'crypto';
 import { fileURLToPath } from 'url';
+import { validateEnvironment } from './lib/env.js';
 import { pool, agentSessions, agentSessionLastUsed, agentSessionPromises, touchAgentSession, initAgent } from './lib/agent.js';
 import { createThreadsSchedule, getReplizSchedule, isReplizConfigured } from './lib/repliz.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const UPLOAD_DIR = path.join(__dirname, 'public', 'uploads');
+
+validateEnvironment();
 
 const BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN || process.env.BOT_TOKEN || process.env.TELEGRAM_TOKEN;
 if (!BOT_TOKEN) {

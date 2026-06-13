@@ -4,8 +4,10 @@ import session from 'express-session';
 import connectPgSimple from 'connect-pg-simple';
 import bcrypt from 'bcryptjs';
 import multer from 'multer';
+import helmet from 'helmet';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import { validateEnvironment } from './lib/env.js';
 import { pool, agentSessions, agentSessionLastUsed, agentSessionPromises, touchAgentSession, initAgent } from './lib/agent.js';
 import { createThreadsSchedule, getReplizSchedule, getThreadsAccounts, isReplizConfigured } from './lib/repliz.js';
 
@@ -24,34 +26,7 @@ function escapeHtml(text) {
     .replace(/'/g, '&#039;');
 }
 
-// Environment validation
-function validateEnvironment() {
-  const warnings = [];
-  
-  if (!process.env.SESSION_SECRET) {
-    warnings.push('SESSION_SECRET not set - using auto-generated secret (sessions will be lost on restart)');
-  }
-  
-  if (!process.env.DB_PASSWORD) {
-    warnings.push('DB_PASSWORD not set - database connection may fail');
-  }
-  
-  if (!process.env.BRAVE_API_KEY) {
-    warnings.push('BRAVE_API_KEY not set - web search feature will be disabled');
-  }
-  
-  if (process.env.NODE_ENV === 'production' && !process.env.APP_URL) {
-    warnings.push('APP_URL not set in production - CSRF protection may not work correctly');
-  }
-  
-  if (warnings.length > 0) {
-    console.warn('\n⚠️  Environment Warnings:');
-    warnings.forEach(w => console.warn(`   - ${w}`));
-    console.warn('');
-  }
-}
-
-// Run validation on startup
+// Run config validation on startup before binding the server.
 validateEnvironment();
 
 async function initPemasaranReplizSchema() {
@@ -89,6 +64,13 @@ const replizAutoScheduleLeadMs = Number(process.env.REPLIZ_AUTO_SCHEDULE_LEAD_MS
 
 app.disable('x-powered-by');
 app.set('trust proxy', true);
+
+app.use(helmet({
+  // The app currently renders inline scripts/styles from server.js, so enable
+  // the other Helmet protections while leaving CSP for a later template refactor.
+  contentSecurityPolicy: false,
+  crossOriginEmbedderPolicy: false,
+}));
 
 // Body parser
 app.use(express.urlencoded({ extended: true }));
