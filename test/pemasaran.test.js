@@ -30,26 +30,65 @@ describe('parseMarketingSchedule', () => {
   });
 });
 
-describe('normalizePlan', () => {
-  it('normalizes valid plan data', () => {
-    const plan = normalizePlan({
-      judul: '  Promo Batik  ',
-      strategi: 'Highlight motif baru',
-      target_audiens: 'Pembeli muda',
-      jadwal: '6 Juni 2026',
-      copywriting: 'Diskon 10%',
-      produk_terkait: 'Kemeja Batik',
-      gambar: '/uploads/produk-1.jpg',
-    }, 0);
+function withEnv(overrides, fn) {
+  const prev = {};
+  for (const key of Object.keys(overrides)) {
+    prev[key] = process.env[key];
+    if (overrides[key] === undefined) delete process.env[key];
+    else process.env[key] = overrides[key];
+  }
+  try {
+    return fn();
+  } finally {
+    for (const key of Object.keys(overrides)) {
+      if (prev[key] === undefined) delete process.env[key];
+      else process.env[key] = prev[key];
+    }
+  }
+}
 
-    assert.equal(plan.judul, 'Promo Batik');
-    assert.equal(plan.strategi, 'Highlight motif baru');
-    assert.equal(plan.target_audiens, 'Pembeli muda');
-    assert.equal(plan.kanal, 'threads');
-    assert.equal(plan.jadwal, '6 Juni 2026');
-    assert.equal(plan.copywriting, 'Diskon 10%');
-    assert.equal(plan.produk_terkait, 'Kemeja Batik');
-    assert.equal(plan.gambar, '/uploads/produk-1.jpg');
+describe('normalizePlan', () => {
+  it('normalizes valid plan data with default threads kanal', () => {
+    withEnv({ ENABLED_CHANNELS: 'threads' }, () => {
+      const plan = normalizePlan({
+        judul: '  Promo Batik  ',
+        strategi: 'Highlight motif baru',
+        target_audiens: 'Pembeli muda',
+        jadwal: '6 Juni 2026',
+        copywriting: 'Diskon 10%',
+        produk_terkait: 'Kemeja Batik',
+        gambar: '/uploads/produk-1.jpg',
+      }, 0);
+
+      assert.equal(plan.judul, 'Promo Batik');
+      assert.equal(plan.strategi, 'Highlight motif baru');
+      assert.equal(plan.target_audiens, 'Pembeli muda');
+      assert.equal(plan.kanal, 'threads');
+      assert.equal(plan.jadwal, '6 Juni 2026');
+      assert.equal(plan.copywriting, 'Diskon 10%');
+      assert.equal(plan.produk_terkait, 'Kemeja Batik');
+      assert.equal(plan.gambar, '/uploads/produk-1.jpg');
+    });
+  });
+
+  it('preserves explicit instagram kanal when enabled', () => {
+    withEnv({ ENABLED_CHANNELS: 'threads,instagram' }, () => {
+      const plan = normalizePlan({
+        judul: 'Reels Promo',
+        strategi: 'Carousel produk',
+        kanal: 'instagram',
+      }, 0);
+      assert.equal(plan.kanal, 'instagram');
+    });
+  });
+
+  it('rejects instagram kanal when not enabled', () => {
+    withEnv({ ENABLED_CHANNELS: 'threads' }, () => {
+      assert.throws(
+        () => normalizePlan({ judul: 'X', strategi: 'Y', kanal: 'instagram' }, 0),
+        /tidak diaktifkan/,
+      );
+    });
   });
 });
 

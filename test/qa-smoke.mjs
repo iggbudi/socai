@@ -57,6 +57,12 @@ const actuatorFiles = [
   'lib/scheduleApproval.js',
   'lib/publishFeedback.js',
   'lib/telegramNotify.js',
+  'lib/channels/index.js',
+  'lib/channels/registry.js',
+  'lib/channels/threads.js',
+  'lib/channels/instagram.js',
+  'lib/channels/prompt.js',
+  'lib/web/routes/api/channels.js',
 ];
 for (const rel of actuatorFiles) {
   check(`actuator file exists: ${rel}`, () => {
@@ -116,7 +122,8 @@ check('pemasaran: table delegation', () => {
   assert.match(pemasaranHtml, /data-action/);
 });
 
-// HTTP smoke against running server (if up)
+// HTTP smoke against running server (skip in CI with QA_SKIP_HTTP=1)
+const skipHttp = ['1', 'true', 'yes'].includes(String(process.env.QA_SKIP_HTTP || '').toLowerCase());
 const base = 'http://127.0.0.1:3010';
 
 async function httpCheck(name, fn) {
@@ -129,7 +136,9 @@ async function httpCheck(name, fn) {
   }
 }
 
-try {
+if (skipHttp) {
+  console.log('⊘ HTTP smoke skipped (QA_SKIP_HTTP=1)');
+} else try {
   const health = await fetch(`${base}/health`);
   const healthJson = await health.json();
   await httpCheck('HTTP /health ok', async () => {
@@ -148,6 +157,8 @@ try {
     assert.equal(typeof healthDetailJson.checks.autonomy_mode, 'string');
     assert.equal(typeof healthDetailJson.checks.agent_runs_ready, 'boolean');
     assert.equal(typeof healthDetailJson.checks.autonomous_jobs.auto_plan_cron_interval_ms, 'number');
+    assert.ok(Array.isArray(healthDetailJson.checks.channels));
+    assert.ok(healthDetailJson.checks.channels.some((c) => c.id === 'threads'));
   });
 
   const loginGet = await fetch(`${base}/login`);

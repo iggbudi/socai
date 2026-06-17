@@ -1,6 +1,6 @@
 # autonomous.md — Rencana Bounded Autonomous Agent
 
-**Status:** P1 ✅ implemented (`75560a5`) · P2 ✅ implemented  
+**Status:** P1 ✅ implemented (`75560a5`) · P2 ✅ implemented (`a9f8315`) · P3 ✅ implemented
 **Tanggal:** 17 Juni 2026  
 **Proyek:** socai.my.id — Batik Bakaran  
 **Judul penelitian:** *Autonomous AI Agent untuk Otomasi Konten Media Sosial*
@@ -489,8 +489,8 @@ node --check lib/actuator/index.js
 | ~~P2~~ | ~~Telegram approve inline~~ | ✅ `approve_schedule` / `reject_schedule` callbacks |
 | ~~P2~~ | ~~Feedback loop sync → agent~~ | ✅ `lib/publishFeedback.js` + refresh setelah Repliz sync |
 | ~~P2~~ | ~~Purge `agent_runs`~~ | ✅ `purgeOldAgentRuns()` + `AGENT_RUNS_PURGE_INTERVAL_MS` |
-| P3 | Multi-channel adapter | Instagram, dll. |
-| P3 | CI GitHub Actions | `npm test` + qa-smoke |
+| ~~P3~~ | ~~Multi-channel adapter~~ | ✅ `lib/channels/` — Threads + Instagram via Repliz |
+| ~~P3~~ | ~~CI GitHub Actions~~ | ✅ `.github/workflows/ci.yml` — `npm run test:ci` |
 
 ---
 

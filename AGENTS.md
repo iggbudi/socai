@@ -8,7 +8,7 @@ Node.js ESM app for **Batik Bakaran** product & marketing management:
 - **Telegram bot** (`telegram-bot.js`) — Telegraf, content wizards, Repliz scheduling, shared AI agent
 - **Shared `lib/` modules** — DB pools, AI agent, rate limits, image/URL validation, Repliz client, env validation
 - **PostgreSQL** — `produk`, `pemasaran`, `users`, `user_sessions`
-- **Repliz** — optional Threads content scheduling/sync (web + bot)
+- **Repliz** — optional multi-channel content scheduling/sync (Threads + Instagram via `lib/channels/`)
 - **Cloudinary** — optional image upload from Telegram marketing wizard
 
 No build step, no TypeScript. Node **>=24**. Tests: `npm test` (Node built-in `node:test`).
@@ -20,6 +20,7 @@ npm start          # web — port 3010, binds 127.0.0.1
 npm run bot        # telegram bot (long-polling)
 npm run dev        # both in background (server.js & telegram-bot.js)
 npm test           # automated tests in test/
+npm run test:ci    # unit tests + qa-smoke (no HTTP; used by GitHub Actions)
 ```
 
 **systemd** (production): `socai-node.service` (web), `socai-bot.service` (bot)
@@ -40,7 +41,9 @@ Copy `.env.example` → `.env` before running. Web validates env on startup via 
 | `AI_MESSAGE_MAX_LENGTH` | Max chars per AI message (default `4000`) |
 | `WEB_AI_RATE_LIMIT`, `WEB_AI_RATE_WINDOW_MS` | Web `/api/asisten` rate limit (default 10/min) |
 | `TELEGRAM_AI_RATE_LIMIT`, `TELEGRAM_AI_RATE_WINDOW_MS` | Telegram free-text AI rate limit (default 10/min) |
-| `REPLIZ_API_KEY`, `REPLIZ_SECRET`, `REPLIZ_ACCOUNT_ID` | Repliz API credentials |
+| `ENABLED_CHANNELS` | Comma-separated social channels: `threads`, `instagram` (default `threads`) |
+| `REPLIZ_API_KEY`, `REPLIZ_SECRET`, `REPLIZ_ACCOUNT_ID` | Repliz API credentials (Threads) |
+| `REPLIZ_INSTAGRAM_ACCOUNT_ID` | Repliz Instagram account id (when `instagram` enabled) |
 | `REPLIZ_BASE_URL` | Repliz API base (default `https://api.repliz.com`) |
 | `REPLIZ_SYNC_INTERVAL_MS` | Background Repliz status sync interval (default 300000) |
 | `CLOUDINARY_CLOUD_NAME`, `CLOUDINARY_API_KEY`, `CLOUDINARY_API_SECRET` | Optional Telegram image upload to Cloudinary |
@@ -70,7 +73,8 @@ Copy `.env.example` → `.env` before running. Web validates env on startup via 
 | `lib/agent.js` | AI agent (`@earendil-works/pi-coding-agent`), `pool` + `aiReadPool`, session map, `initAgent()`, tools `db_query` (SELECT-only), `web_search`, actuator tools (`get_calendar_gaps`, `save_content_plan`, `schedule_content`, `sync_content_status`), active run context exports, `closeAgentPools()` |
 | `lib/agentRuns.js` | Research audit log: `initAgentRunsSchema`, `createAgentRun`, `logToolCall`, `completeAgentRun`, `getAgentRunMetrics`, `listAgentRuns` |
 | `lib/actuator/` | Bounded autonomy layer: `resolveAutonomyMode`, policy checks, wrappers around `pemasaran.js` write paths |
-| `lib/pemasaran.js` | Shared pemasaran/Repliz logic: `savePlansToDb`, `schedulePlanToRepliz`, `syncPlanReplizStatus`, `parseMarketingSchedule` |
+| `lib/channels/` | Multi-channel adapter: `registry.js`, `threads.js`, `instagram.js`, `getChannel()`, `listChannels()`, `buildChannelsPromptSection()` |
+| `lib/pemasaran.js` | Shared pemasaran/Repliz logic: `savePlansToDb`, `schedulePlanToChannel` (alias `schedulePlanToRepliz`), `syncPlanReplizStatus`, `parseMarketingSchedule` |
 | `lib/mediaUrl.js` | `sanitizeImageUrl()` — HTTPS whitelist, blocks `javascript:`/`data:`/`http://`, allows `/uploads/...` |
 | `lib/imageFile.js` | Magic-byte detection (`jpeg`/`png`/`gif`/`webp`), `assertValidImageBuffer()` |
 | `lib/rateLimit.js` | `createRateLimiter()` — Express middleware + standalone check/consume |
@@ -145,7 +149,8 @@ Copy `.env.example` → `.env` before running. Web validates env on startup via 
 | POST | `/api/upload` | Image upload (5MB, magic-byte validated) |
 | GET/POST/PUT/DELETE | `/api/produk[/:id]` | Product CRUD |
 | GET/POST/DELETE | `/api/pemasaran[/:id]` | Marketing plan CRUD |
-| GET | `/api/repliz/accounts` | List Repliz Threads accounts |
+| GET | `/api/channels` | List enabled/configured social channels |
+| GET | `/api/repliz/accounts` | List Repliz accounts (`?type=` or `?channel=` — `threads`, `instagram`) |
 | POST | `/api/pemasaran/repliz/schedule` | Bulk schedule to Repliz |
 | POST | `/api/pemasaran/:id/repliz/schedule` | Schedule one plan |
 | POST | `/api/pemasaran/:id/repliz/retry` | Retry failed Repliz post |
@@ -177,6 +182,7 @@ Copy `.env.example` → `.env` before running. Web validates env on startup via 
 - **`AUTONOMY_MODE`** — default `assistive` (safe); set `supervised`/`bounded` for research scenarios; see `autonomous.md`
 - **`DB_AI_READ_*`** — without dedicated read-only user, `db_query` runs as `DB_USER` (warned at startup)
 - **Repliz optional** — scheduling commands no-op/error if `REPLIZ_*` unset; background sync/auto-schedule in `server.js` when configured
+- **`ENABLED_CHANNELS`** — default `threads`; enable `instagram` only when `REPLIZ_INSTAGRAM_ACCOUNT_ID` is set
 - **Cloudinary optional** — Telegram wizard falls back to local `public/uploads/` if unset
 - **No frontend build** — UI HTML lives in `lib/web/views/` (`loginPage`, `dashboardPage`, etc.)
 - **`index.html`** at repo root is a static placeholder; Express handles routing
