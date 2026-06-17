@@ -4,7 +4,8 @@ import fs from 'fs';
 import path from 'path';
 import crypto from 'crypto';
 import { fileURLToPath } from 'url';
-import { validateEnvironment } from './lib/env.js';
+import { validateBotEnvironment } from './lib/env.js';
+import { sanitizeImageUrl } from './lib/mediaUrl.js';
 import { pool, agentSessions, agentSessionLastUsed, agentSessionPromises, touchAgentSession, initAgent } from './lib/agent.js';
 import { createThreadsSchedule, getReplizSchedule, isReplizConfigured } from './lib/repliz.js';
 
@@ -12,7 +13,7 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const UPLOAD_DIR = path.join(__dirname, 'public', 'uploads');
 
-validateEnvironment();
+validateBotEnvironment();
 
 const BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN || process.env.BOT_TOKEN || process.env.TELEGRAM_TOKEN;
 if (!BOT_TOKEN) {
@@ -153,17 +154,24 @@ async function savePlansToDb(planData) {
     const text = toText(value);
     return text && text.length > max ? text.slice(0, max) : text;
   };
-  const normalizePlan = (rawPlan, index) => ({
-    judul: limitText(rawPlan?.judul || rawPlan?.title || `Rencana Threads Hari ${index + 1}`, 255),
-    strategi: toText(rawPlan?.strategi || rawPlan?.strategy),
-    target_audiens: limitText(rawPlan?.target_audiens || rawPlan?.target || rawPlan?.audience, 255),
-    kanal: 'threads',
-    jadwal: toText(rawPlan?.jadwal || rawPlan?.schedule),
-    scheduled_at: toText(rawPlan?.scheduled_at || rawPlan?.schedule_at || rawPlan?.scheduledAt),
-    copywriting: toText(rawPlan?.copywriting || rawPlan?.caption || rawPlan?.copy),
-    produk_terkait: limitText(rawPlan?.produk_terkait || rawPlan?.produk || rawPlan?.product, 255),
-    gambar: toText(rawPlan?.gambar || rawPlan?.image || rawPlan?.image_url || rawPlan?.url_gambar),
-  });
+  const normalizePlan = (rawPlan, index) => {
+    const rawGambar = toText(rawPlan?.gambar || rawPlan?.image || rawPlan?.image_url || rawPlan?.url_gambar);
+    let gambar = '';
+    if (rawGambar) {
+      gambar = sanitizeImageUrl(rawGambar, { allowEmpty: true });
+    }
+    return {
+      judul: limitText(rawPlan?.judul || rawPlan?.title || `Rencana Threads Hari ${index + 1}`, 255),
+      strategi: toText(rawPlan?.strategi || rawPlan?.strategy),
+      target_audiens: limitText(rawPlan?.target_audiens || rawPlan?.target || rawPlan?.audience, 255),
+      kanal: 'threads',
+      jadwal: toText(rawPlan?.jadwal || rawPlan?.schedule),
+      scheduled_at: toText(rawPlan?.scheduled_at || rawPlan?.schedule_at || rawPlan?.scheduledAt),
+      copywriting: toText(rawPlan?.copywriting || rawPlan?.caption || rawPlan?.copy),
+      produk_terkait: limitText(rawPlan?.produk_terkait || rawPlan?.produk || rawPlan?.product, 255),
+      gambar,
+    };
+  };
 
   const rawPlans = normalizePlansInput(planData).filter(Boolean);
   const plans = rawPlans.map(normalizePlan);
@@ -855,13 +863,6 @@ async function renderProdukList() {
   }).join('\n\n');
 }
 
-// ---------- /echo (test) ----------
-bot.command('echo', async (ctx) => {
-  const text = ctx.message.text.replace('/echo', '').trim() || 'Halo! Bot berfungsi ✅';
-  console.log(`[ECHO] dari ${ctx.chat.id}: "${text}"`);
-  await ctx.reply('Echo: ' + text);
-});
-
 // ---------- /listproduk ----------
 bot.command('listproduk', async (ctx) => {
   await ctx.sendChatAction('typing');
@@ -1254,12 +1255,12 @@ async function syncReplizPlanStatus(id) {
   return { plan: saved.rows[0], repliz: schedule };
 }
 
-async function scheduleViaRepliz(ctx, id, postNow = false) {
+async function scheduleViaRepliz(ctx, id, { postNow = false, force = false } = {}) {
   if (!/^\d+$/.test(String(id || ''))) return ctx.reply('Format: /jadwalkan ID atau /postnow ID atau /retrypost ID');
   if (!isReplizConfigured()) return ctx.reply('⚠️ Repliz belum dikonfigurasi. Isi REPLIZ_API_KEY, REPLIZ_SECRET, dan REPLIZ_ACCOUNT_ID.');
   const plan = await getPlanById(id);
   if (!plan) return ctx.reply('Rencana konten tidak ditemukan.');
-  if (plan.repliz_schedule_id && !postNow) return ctx.reply(`ℹ️ Konten #${id} sudah punya Repliz schedule id: ${plan.repliz_schedule_id}\nGunakan /cekpost ${id} untuk cek status.`);
+  if (plan.repliz_schedule_id && !postNow && !force) return ctx.reply(`ℹ️ Konten #${id} sudah punya Repliz schedule id: ${plan.repliz_schedule_id}\nGunakan /cekpost ${id} untuk cek status.`);
   const parsedSchedule = parseMarketingSchedule(plan);
   const scheduleAt = postNow ? new Date(Date.now() + 60_000).toISOString() : parsedSchedule?.toISOString();
   if (!scheduleAt) return ctx.reply('Jadwal belum bisa diparse. Gunakan format seperti: 2026-06-05 19:00 atau 5 Juni 2026 jam 19:00.');
@@ -1279,9 +1280,9 @@ async function scheduleViaRepliz(ctx, id, postNow = false) {
   }
 }
 
-bot.command('jadwalkan', (ctx) => scheduleViaRepliz(ctx, ctx.message.text.trim().split(/\s+/)[1], false));
-bot.command('postnow', (ctx) => scheduleViaRepliz(ctx, ctx.message.text.trim().split(/\s+/)[1], true));
-bot.command('retrypost', (ctx) => scheduleViaRepliz(ctx, ctx.message.text.trim().split(/\s+/)[1], false));
+bot.command('jadwalkan', (ctx) => scheduleViaRepliz(ctx, ctx.message.text.trim().split(/\s+/)[1], { postNow: false, force: false }));
+bot.command('postnow', (ctx) => scheduleViaRepliz(ctx, ctx.message.text.trim().split(/\s+/)[1], { postNow: true, force: false }));
+bot.command('retrypost', (ctx) => scheduleViaRepliz(ctx, ctx.message.text.trim().split(/\s+/)[1], { postNow: false, force: true }));
 bot.command('cekpost', async (ctx) => {
   const id = ctx.message.text.trim().split(/\s+/)[1];
   if (!/^\d+$/.test(String(id || ''))) return ctx.reply('Format: /cekpost ID');

@@ -7,7 +7,8 @@ import multer from 'multer';
 import helmet from 'helmet';
 import path from 'path';
 import { fileURLToPath } from 'url';
-import { validateEnvironment } from './lib/env.js';
+import { validateWebEnvironment } from './lib/env.js';
+import { sanitizeImageUrl } from './lib/mediaUrl.js';
 import { pool, agentSessions, agentSessionLastUsed, agentSessionPromises, touchAgentSession, initAgent } from './lib/agent.js';
 import { createThreadsSchedule, getReplizSchedule, getThreadsAccounts, isReplizConfigured } from './lib/repliz.js';
 
@@ -27,7 +28,7 @@ function escapeHtml(text) {
 }
 
 // Run config validation on startup before binding the server.
-validateEnvironment();
+validateWebEnvironment();
 
 async function initPemasaranReplizSchema() {
   await pool.query(`
@@ -370,10 +371,16 @@ app.post('/api/produk', requireLogin, async (req, res) => {
   if (!nama || harga === undefined || harga === '' || !Number.isFinite(parsedHarga) || parsedHarga < 0) {
     return res.status(400).json({ error: 'Nama dan harga valid wajib diisi' });
   }
+  let sanitizedGambar = '';
+  try {
+    sanitizedGambar = sanitizeImageUrl(gambar, { allowEmpty: true });
+  } catch {
+    return res.status(400).json({ error: 'URL gambar tidak valid' });
+  }
   try {
     const result = await pool.query(
       'INSERT INTO produk (nama, harga, stok, gambar, deskripsi) VALUES ($1,$2,$3,$4,$5) RETURNING *',
-      [nama, parsedHarga, Number.isFinite(parsedStok) && parsedStok >= 0 ? parsedStok : 0, gambar || '', deskripsi || '']
+      [nama, parsedHarga, Number.isFinite(parsedStok) && parsedStok >= 0 ? parsedStok : 0, sanitizedGambar, deskripsi || '']
     );
     res.status(201).json(result.rows[0]);
   } catch (err) {
@@ -390,10 +397,16 @@ app.put('/api/produk/:id', requireLogin, async (req, res) => {
   if (!nama || harga === undefined || harga === '' || !Number.isFinite(parsedHarga) || parsedHarga < 0) {
     return res.status(400).json({ error: 'Nama dan harga valid wajib diisi' });
   }
+  let sanitizedGambar = '';
+  try {
+    sanitizedGambar = sanitizeImageUrl(gambar, { allowEmpty: true });
+  } catch {
+    return res.status(400).json({ error: 'URL gambar tidak valid' });
+  }
   try {
     const result = await pool.query(
       'UPDATE produk SET nama=$1, harga=$2, stok=$3, gambar=$4, deskripsi=$5, updated_at=NOW() WHERE id=$6 RETURNING *',
-      [nama, parsedHarga, Number.isFinite(parsedStok) && parsedStok >= 0 ? parsedStok : 0, gambar || '', deskripsi || '', req.params.id]
+      [nama, parsedHarga, Number.isFinite(parsedStok) && parsedStok >= 0 ? parsedStok : 0, sanitizedGambar, deskripsi || '', req.params.id]
     );
     if (result.rows.length === 0) return res.status(404).json({ error: 'Produk tidak ditemukan' });
     res.json(result.rows[0]);
@@ -759,20 +772,32 @@ app.post('/api/pemasaran', requireLogin, async (req, res) => {
     const text = toText(value);
     return text && text.length > max ? text.slice(0, max) : text;
   };
-  const normalizePlan = (rawPlan, index) => ({
-    judul: limitText(rawPlan?.judul || rawPlan?.title || `Rencana Threads Hari ${index + 1}`, 255),
-    strategi: toText(rawPlan?.strategi || rawPlan?.strategy),
-    target_audiens: limitText(rawPlan?.target_audiens || rawPlan?.target || rawPlan?.audience, 255),
-    kanal: 'threads',
-    jadwal: toText(rawPlan?.jadwal || rawPlan?.schedule),
-    scheduled_at: toText(rawPlan?.scheduled_at || rawPlan?.schedule_at || rawPlan?.scheduledAt),
-    copywriting: toText(rawPlan?.copywriting || rawPlan?.caption || rawPlan?.copy),
-    produk_terkait: limitText(rawPlan?.produk_terkait || rawPlan?.produk || rawPlan?.product, 255),
-    gambar: toText(rawPlan?.gambar || rawPlan?.image || rawPlan?.image_url || rawPlan?.url_gambar),
-  });
+  const normalizePlan = (rawPlan, index) => {
+    const rawGambar = toText(rawPlan?.gambar || rawPlan?.image || rawPlan?.image_url || rawPlan?.url_gambar);
+    let gambar = '';
+    if (rawGambar) {
+      gambar = sanitizeImageUrl(rawGambar, { allowEmpty: true });
+    }
+    return {
+      judul: limitText(rawPlan?.judul || rawPlan?.title || `Rencana Threads Hari ${index + 1}`, 255),
+      strategi: toText(rawPlan?.strategi || rawPlan?.strategy),
+      target_audiens: limitText(rawPlan?.target_audiens || rawPlan?.target || rawPlan?.audience, 255),
+      kanal: 'threads',
+      jadwal: toText(rawPlan?.jadwal || rawPlan?.schedule),
+      scheduled_at: toText(rawPlan?.scheduled_at || rawPlan?.schedule_at || rawPlan?.scheduledAt),
+      copywriting: toText(rawPlan?.copywriting || rawPlan?.caption || rawPlan?.copy),
+      produk_terkait: limitText(rawPlan?.produk_terkait || rawPlan?.produk || rawPlan?.product, 255),
+      gambar,
+    };
+  };
 
   const rawPlans = normalizePlansInput(req.body).filter(Boolean);
-  const plans = rawPlans.map(normalizePlan);
+  let plans;
+  try {
+    plans = rawPlans.map(normalizePlan);
+  } catch {
+    return res.status(400).json({ error: 'URL gambar tidak valid' });
+  }
   if (plans.length === 0 || plans.some(plan => !plan.judul || !plan.strategi)) {
     return res.status(400).json({ error: 'Setiap rencana wajib memiliki judul dan strategi.' });
   }

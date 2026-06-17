@@ -11,7 +11,7 @@
     "dev": "node server.js & node telegram-bot.js"
   },
   "dependencies": {
-    "@earendil-works/pi-coding-agent": "^0.75.5",
+    "@earendil-works/pi-coding-agent": "^0.79.6",
     "bcryptjs": "^3.0.3",
     "connect-pg-simple": "^10.0.0",
     "dotenv": "^17.4.2",
