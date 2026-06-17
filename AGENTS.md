@@ -4,7 +4,7 @@
 
 Node.js ESM app for **Batik Bakaran** product & marketing management:
 
-- **Web app** (`server.js`) — Express 5, session auth, inline HTML pages, REST API, AI chat (SSE)
+- **Web app** (`server.js` bootstrap + `lib/web/`) — Express 5, session auth, inline HTML pages, REST API, AI chat (SSE)
 - **Telegram bot** (`telegram-bot.js`) — Telegraf, content wizards, Repliz scheduling, shared AI agent
 - **Shared `lib/` modules** — DB pools, AI agent, rate limits, image/URL validation, Repliz client, env validation
 - **PostgreSQL** — `produk`, `pemasaran`, `users`, `user_sessions`
@@ -67,8 +67,9 @@ Copy `.env.example` → `.env` before running. Web validates env on startup via 
 | `lib/csrfToken.js` | `generateCsrfToken`, `ensureSessionCsrfToken`, `validateCsrfToken` — session CSRF for logout + page forms |
 | `lib/telegramAccess.js` | `createTelegramAccess()` — role-based ACL (`super_admin` > `operator` > `viewer`), migrates legacy `allowed_user_ids[]` |
 | `lib/health.js` | `collectHealthStatus()` — DB ping + optional config flags (`?detail=1`) |
+| `lib/web/` | Web app modules: `createApp.js` (Express factory), `middleware/` (auth, CSRF, CSP nonce, login rate limit, upload), `routes/` (pages + API), `views/` (HTML templates), `replizJobs.js` (background Repliz sync/schedule) |
 
-**Entry points:** `server.js` (all web HTML as template literals in-file), `telegram-bot.js` (access control via `lib/telegramAccess.js` + `telegram-users.json`, wizards, Repliz commands).
+**Entry points:** `server.js` (thin bootstrap: env validation, schema init, `createWebApp()`, listen, shutdown), `telegram-bot.js` (access control via `lib/telegramAccess.js` + `telegram-users.json`, wizards, Repliz commands).
 
 ## Security (P0+P1 summary)
 
@@ -79,7 +80,7 @@ Copy `.env.example` → `.env` before running. Web validates env on startup via 
 - **DB read-only pool** — AI `db_query` uses `aiReadPool` (dedicated `DB_AI_READ_*` creds recommended in production)
 - **AI `db_query` sandbox** — SELECT only, no multi-statement, keyword blocklist, single-table reads (`produk`/`pemasaran`), no JOIN, 1000-char & 50-row caps
 - **Graceful shutdown** — `server.js` handles `SIGINT`/`SIGTERM`: stops intervals, aborts web agent sessions, closes HTTP server, `closeAgentPools()`
-- **Helmet** — enabled (CSP disabled due to inline scripts)
+- **Helmet + CSP** — enabled with per-request nonce (`lib/web/middleware/csp.js`); inline `<script>`/`<style>` in views use `nonce` attribute
 - **Login rate limit** — 5 attempts / 15 min per IP
 - **Logout CSRF** — `POST /logout` with session `_csrf` token; `GET /logout` redirects to `/dashboard` (no session destroy)
 - **Telegram ACL** — roles via `lib/telegramAccess.js`: `super_admin` (full + user mgmt), `operator` (AI, wizards, Repliz), `viewer` (read-only commands); `/start`, `/help`, `/whoami` open to all
@@ -153,5 +154,5 @@ Copy `.env.example` → `.env` before running. Web validates env on startup via 
 - **`DB_AI_READ_*`** — without dedicated read-only user, `db_query` runs as `DB_USER` (warned at startup)
 - **Repliz optional** — scheduling commands no-op/error if `REPLIZ_*` unset; background sync/auto-schedule in `server.js` when configured
 - **Cloudinary optional** — Telegram wizard falls back to local `public/uploads/` if unset
-- **No frontend build** — all UI HTML lives in `server.js` functions (`loginPage`, `dashboardPage`, etc.)
+- **No frontend build** — UI HTML lives in `lib/web/views/` (`loginPage`, `dashboardPage`, etc.)
 - **`index.html`** at repo root is a static placeholder; Express handles routing
