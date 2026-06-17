@@ -16,6 +16,7 @@ import {
 import { normalizeAiMessage, AiMessageError } from './lib/aiLimits.js';
 import { createRateLimiter } from './lib/rateLimit.js';
 import { assertValidImageBuffer, detectImageType, extForImageType } from './lib/imageFile.js';
+import { createTelegramAccess } from './lib/telegramAccess.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -43,18 +44,13 @@ const telegramAiRateLimiter = createRateLimiter({
 // ---------- Telegram access control ----------
 const SUPER_ADMIN_ID = Number(process.env.TELEGRAM_SUPER_ADMIN_ID || 275313615);
 const TELEGRAM_USERS_FILE = path.join(__dirname, 'telegram-users.json');
+const access = createTelegramAccess({ usersFile: TELEGRAM_USERS_FILE, superAdminId: SUPER_ADMIN_ID });
 
-function loadTelegramUsers() {
-  try {
-    const data = JSON.parse(fs.readFileSync(TELEGRAM_USERS_FILE, 'utf8'));
-    return new Set((data.allowed_user_ids || []).map(Number).filter(Number.isFinite));
-  } catch (_) {
-    return new Set();
-  }
-}
-
-const allowedTelegramUsers = loadTelegramUsers();
-allowedTelegramUsers.add(SUPER_ADMIN_ID);
+const ROLE_LABELS = {
+  super_admin: 'Super Admin',
+  operator: 'Operator',
+  viewer: 'Viewer',
+};
 
 const defaultBotCommands = [
   { command: 'start', description: 'Mulai chatbot' },
@@ -78,6 +74,8 @@ const defaultBotCommands = [
 const superAdminBotCommands = [
   ...defaultBotCommands,
   { command: 'adduser', description: 'Tambah user yang boleh memakai bot' },
+  { command: 'removeuser', description: 'Hapus user dari bot' },
+  { command: 'listusers', description: 'Lihat daftar user dan role' },
 ];
 
 async function syncBotCommands() {
@@ -106,26 +104,22 @@ async function ensureMarketingSchema() {
   `);
 }
 
-function saveTelegramUsers() {
-  const data = {
-    super_admin_id: SUPER_ADMIN_ID,
-    allowed_user_ids: [...allowedTelegramUsers].sort((a, b) => a - b),
-    updated_at: new Date().toISOString(),
-  };
-  fs.writeFileSync(TELEGRAM_USERS_FILE, JSON.stringify(data, null, 2) + '\n');
-}
-
 function getTelegramUserId(ctx) {
   return Number(ctx.from?.id);
 }
 
-function isSuperAdmin(ctx) {
-  return getTelegramUserId(ctx) === SUPER_ADMIN_ID;
+function formatTelegramRole(userId) {
+  const role = access.getRole(userId);
+  return role ? (ROLE_LABELS[role] || role) : 'Belum Terdaftar';
 }
 
-function isAllowedTelegramUser(ctx) {
+function requireTelegramRole(ctx, minRole) {
   const userId = getTelegramUserId(ctx);
-  return userId === SUPER_ADMIN_ID || allowedTelegramUsers.has(userId);
+  if (!access.hasRole(userId, minRole)) {
+    ctx.reply('⛔ Akses ditolak untuk perintah ini.');
+    return false;
+  }
+  return true;
 }
 
 bot.use(async (ctx, next) => {
@@ -135,7 +129,7 @@ bot.use(async (ctx, next) => {
   // /start, /help, dan /whoami tetap dibuka agar user bisa melihat ID untuk didaftarkan admin.
   if (['/start', '/help', '/whoami'].includes(command)) return next();
 
-  if (!isAllowedTelegramUser(ctx)) {
+  if (!access.isAllowed(getTelegramUserId(ctx))) {
     return ctx.reply(
       '⛔ Akses ditolak.\n\n' +
       'Minta super admin menambahkan User ID kamu dengan perintah:\n' +
@@ -167,12 +161,16 @@ bot.start(async (ctx) => {
 
 // ---------- Handler: /help ----------
 bot.help(async (ctx) => {
-  const adminHelp = isSuperAdmin(ctx)
-    ? '/adduser `<user_id>` — Tambah user yang boleh memakai bot\n'
+  const adminHelp = access.isSuperAdmin(getTelegramUserId(ctx))
+    ? '/adduser `<user_id>` `[role]` — Tambah user (role: operator|viewer)\n' +
+      '/removeuser `<user_id>` — Hapus user terdaftar\n' +
+      '/listusers — Lihat daftar user dan role\n'
     : '';
+  const role = formatTelegramRole(getTelegramUserId(ctx));
   await safeReply(
     ctx,
     '📋 *Perintah yang tersedia:*\n\n' +
+    `Role kamu: *${escMarkdown(role)}*\n\n` +
     '/start — Mulai chatbot\n' +
     '/help — Bantuan ini\n' +
     '/status — Status koneksi & sesi\n' +
@@ -223,7 +221,7 @@ bot.command('whoami', async (ctx) => {
   const fullName = [from.first_name, from.last_name].filter(Boolean).join(' ') || '-';
   const chatTitle = chat.title || '-';
   const chatType = chat.type || '-';
-  const role = isSuperAdmin(ctx) ? 'Super Admin' : isAllowedTelegramUser(ctx) ? 'User Terdaftar' : 'Belum Terdaftar';
+  const role = formatTelegramRole(from.id);
 
   await ctx.reply(
     `👤 *Whoami*\n\n` +
@@ -240,29 +238,83 @@ bot.command('whoami', async (ctx) => {
 
 // ---------- Handler: /adduser (super admin only) ----------
 bot.command('adduser', async (ctx) => {
-  if (!isSuperAdmin(ctx)) {
-    return ctx.reply('⛔ Perintah /adduser hanya bisa digunakan oleh super admin.');
-  }
+  if (!requireTelegramRole(ctx, 'super_admin')) return;
 
   const parts = ctx.message.text.trim().split(/\s+/);
   const userId = Number(parts[1]);
+  const roleArg = parts[2] || 'operator';
   if (!Number.isSafeInteger(userId) || userId <= 0) {
     return ctx.reply(
       'Format salah. Gunakan:\n' +
-      '`/adduser 123456789`\n\n' +
+      '`/adduser 123456789`\n' +
+      '`/adduser 123456789 operator`\n' +
+      '`/adduser 123456789 viewer`\n\n' +
       'User bisa cek ID dengan /whoami.',
       { parse_mode: 'Markdown' }
     );
   }
 
-  const alreadyAdded = allowedTelegramUsers.has(userId);
-  allowedTelegramUsers.add(userId);
-  saveTelegramUsers();
+  const result = access.addUser(userId, roleArg);
+  if (!result.ok) {
+    const message = result.reason === 'invalid_role'
+      ? 'Role tidak valid. Gunakan `operator` atau `viewer`.'
+      : 'User ID tidak valid.';
+    return ctx.reply(message, { parse_mode: 'Markdown' });
+  }
 
   await ctx.reply(
-    (alreadyAdded ? 'ℹ️ User sudah terdaftar.' : '✅ User berhasil ditambahkan.') + '\n\n' +
+    (result.alreadyAdded ? 'ℹ️ User sudah terdaftar, role diperbarui.' : '✅ User berhasil ditambahkan.') + '\n\n' +
     `• User ID: \`${userId}\`\n` +
-    `• Total user terdaftar: \`${allowedTelegramUsers.size}\``,
+    `• Role: \`${result.role}\`\n` +
+    `• Total user terdaftar: \`${access.listUsers().length}\``,
+    { parse_mode: 'Markdown' }
+  );
+});
+
+// ---------- Handler: /removeuser (super admin only) ----------
+bot.command('removeuser', async (ctx) => {
+  if (!requireTelegramRole(ctx, 'super_admin')) return;
+
+  const userId = Number(ctx.message.text.trim().split(/\s+/)[1]);
+  if (!Number.isSafeInteger(userId) || userId <= 0) {
+    return ctx.reply(
+      'Format salah. Gunakan:\n' +
+      '`/removeuser 123456789`',
+      { parse_mode: 'Markdown' }
+    );
+  }
+
+  const result = access.removeUser(userId);
+  if (!result.ok) {
+    if (result.reason === 'super_admin') {
+      return ctx.reply('⛔ Super admin tidak bisa dihapus.');
+    }
+    if (result.reason === 'not_found') {
+      return ctx.reply('ℹ️ User tidak ditemukan dalam daftar terdaftar.');
+    }
+    return ctx.reply('User ID tidak valid.');
+  }
+
+  await ctx.reply(
+    '✅ User berhasil dihapus.\n\n' +
+    `• User ID: \`${userId}\`\n` +
+    `• Total user terdaftar: \`${access.listUsers().length}\``,
+    { parse_mode: 'Markdown' }
+  );
+});
+
+// ---------- Handler: /listusers (super admin only) ----------
+bot.command('listusers', async (ctx) => {
+  if (!requireTelegramRole(ctx, 'super_admin')) return;
+
+  const users = access.listUsers();
+  if (!users.length) {
+    return ctx.reply('Belum ada user terdaftar.');
+  }
+
+  const lines = users.map((user) => `• \`${user.id}\` — ${ROLE_LABELS[user.role] || user.role}`);
+  await ctx.reply(
+    '👥 *Daftar user terdaftar:*\n\n' + lines.join('\n'),
     { parse_mode: 'Markdown' }
   );
 });
@@ -294,9 +346,12 @@ bot.on('text', async (ctx, next) => {
   // Natural language shortcut: "tambah produk" langsung buka wizard,
   // jangan dikirim ke AI karena tool AI memang SELECT-only.
   if (isAddProductIntent(message)) {
+    if (!requireTelegramRole(ctx, 'operator')) return;
     await startProductWizard(ctx);
     return;
   }
+
+  if (!requireTelegramRole(ctx, 'operator')) return;
 
   const rateKey = `telegram:${chatId}`;
   const rate = telegramAiRateLimiter.check(rateKey);
@@ -819,10 +874,16 @@ bot.command('listproduk', async (ctx) => {
 });
 
 // ---------- /buatkonten (content marketing wizard) ----------
-bot.command('buatkonten', (ctx) => startContentWizard(ctx));
+bot.command('buatkonten', (ctx) => {
+  if (!requireTelegramRole(ctx, 'operator')) return;
+  return startContentWizard(ctx);
+});
 
 // ---------- /tambahproduk (start wizard) ----------
-bot.command('tambahproduk', (ctx) => startProductWizard(ctx));
+bot.command('tambahproduk', (ctx) => {
+  if (!requireTelegramRole(ctx, 'operator')) return;
+  return startProductWizard(ctx);
+});
 
 // ---------- /batal (cancel wizard) ----------
 bot.command('batal', (ctx) => {
@@ -1018,6 +1079,7 @@ bot.on('photo', async (ctx) => {
 
 // ---------- Callback: simpan produk ----------
 bot.action('save_produk', async (ctx) => {
+  if (!requireTelegramRole(ctx, 'operator')) return;
   const chatId = ctx.chat.id;
   const wizard = productWizard.get(chatId);
   if (!wizard) {
@@ -1059,6 +1121,7 @@ bot.action('cancel_produk', async (ctx) => {
 
 // ---------- Handler: callback inline keyboard ----------
 bot.action('save_plan', async (ctx) => {
+  if (!requireTelegramRole(ctx, 'operator')) return;
   const chatId = ctx.chat.id;
   const planData = pendingPlans.get(chatId);
 
@@ -1114,6 +1177,7 @@ bot.command('statuskonten', async (ctx) => {
 });
 
 bot.command('ubahstatuskonten', async (ctx) => {
+  if (!requireTelegramRole(ctx, 'super_admin')) return;
   const [, id, status] = ctx.message.text.trim().split(/\s+/);
   const allowed = new Set(['draft', 'scheduled', 'posting', 'posted', 'failed', 'cancelled']);
   if (!/^\d+$/.test(String(id || '')) || !allowed.has((status || '').toLowerCase())) return ctx.reply('Format: /ubahstatuskonten ID status\nStatus: draft, scheduled, posting, posted, failed, cancelled');
@@ -1123,6 +1187,7 @@ bot.command('ubahstatuskonten', async (ctx) => {
 });
 
 bot.command('hapuskonten', async (ctx) => {
+  if (!requireTelegramRole(ctx, 'super_admin')) return;
   const parts = ctx.message.text.trim().split(/\s+/);
   if (parts[1] !== 'HAPUS' || !/^\d+$/.test(String(parts[2] || ''))) return ctx.reply('Konfirmasi ganda diperlukan. Format: /hapuskonten HAPUS ID\nContoh: /hapuskonten HAPUS 12');
   const result = await pool.query('DELETE FROM pemasaran WHERE id = $1 RETURNING id, judul', [parts[2]]);
@@ -1149,9 +1214,18 @@ async function scheduleViaRepliz(ctx, id, { postNow = false, force = false } = {
   }
 }
 
-bot.command('jadwalkan', (ctx) => scheduleViaRepliz(ctx, ctx.message.text.trim().split(/\s+/)[1], { postNow: false, force: false }));
-bot.command('postnow', (ctx) => scheduleViaRepliz(ctx, ctx.message.text.trim().split(/\s+/)[1], { postNow: true, force: false }));
-bot.command('retrypost', (ctx) => scheduleViaRepliz(ctx, ctx.message.text.trim().split(/\s+/)[1], { postNow: false, force: true }));
+bot.command('jadwalkan', (ctx) => {
+  if (!requireTelegramRole(ctx, 'operator')) return;
+  return scheduleViaRepliz(ctx, ctx.message.text.trim().split(/\s+/)[1], { postNow: false, force: false });
+});
+bot.command('postnow', (ctx) => {
+  if (!requireTelegramRole(ctx, 'operator')) return;
+  return scheduleViaRepliz(ctx, ctx.message.text.trim().split(/\s+/)[1], { postNow: true, force: false });
+});
+bot.command('retrypost', (ctx) => {
+  if (!requireTelegramRole(ctx, 'operator')) return;
+  return scheduleViaRepliz(ctx, ctx.message.text.trim().split(/\s+/)[1], { postNow: false, force: true });
+});
 bot.command('cekpost', async (ctx) => {
   const id = ctx.message.text.trim().split(/\s+/)[1];
   if (!/^\d+$/.test(String(id || ''))) return ctx.reply('Format: /cekpost ID');

@@ -11,7 +11,7 @@ Node.js ESM app for **Batik Bakaran** product & marketing management:
 - **Repliz** — optional Threads content scheduling/sync (web + bot)
 - **Cloudinary** — optional image upload from Telegram marketing wizard
 
-No build step, no TypeScript, no test/lint scripts. Node **>=24**.
+No build step, no TypeScript. Node **>=24**. Tests: `npm test` (Node built-in `node:test`).
 
 ## Run
 
@@ -19,6 +19,7 @@ No build step, no TypeScript, no test/lint scripts. Node **>=24**.
 npm start          # web — port 3010, binds 127.0.0.1
 npm run bot        # telegram bot (long-polling)
 npm run dev        # both in background (server.js & telegram-bot.js)
+npm test           # automated tests in test/
 ```
 
 **systemd** (production): `socai-node.service` (web), `socai-bot.service` (bot)
@@ -63,10 +64,11 @@ Copy `.env.example` → `.env` before running. Web validates env on startup via 
 | `lib/aiLimits.js` | `normalizeAiMessage()`, `AiMessageError`, `AI_MESSAGE_MAX_LENGTH` |
 | `lib/env.js` | Startup validation for web/bot (DB, session, CSRF, models, Xiaomi keys) |
 | `lib/repliz.js` | Repliz HTTP client, `createThreadsSchedule()`, `getReplizSchedule()`, `isReplizConfigured()` |
-
-**Entry points:** `server.js` (all web HTML as template literals in-file), `telegram-bot.js` (access control via `telegram-users.json`, wizards, Repliz commands).
-
+| `lib/csrfToken.js` | `generateCsrfToken`, `ensureSessionCsrfToken`, `validateCsrfToken` — session CSRF for logout + page forms |
+| `lib/telegramAccess.js` | `createTelegramAccess()` — role-based ACL (`super_admin` > `operator` > `viewer`), migrates legacy `allowed_user_ids[]` |
 | `lib/health.js` | `collectHealthStatus()` — DB ping + optional config flags (`?detail=1`) |
+
+**Entry points:** `server.js` (all web HTML as template literals in-file), `telegram-bot.js` (access control via `lib/telegramAccess.js` + `telegram-users.json`, wizards, Repliz commands).
 
 ## Security (P0+P1 summary)
 
@@ -79,7 +81,8 @@ Copy `.env.example` → `.env` before running. Web validates env on startup via 
 - **Graceful shutdown** — `server.js` handles `SIGINT`/`SIGTERM`: stops intervals, aborts web agent sessions, closes HTTP server, `closeAgentPools()`
 - **Helmet** — enabled (CSP disabled due to inline scripts)
 - **Login rate limit** — 5 attempts / 15 min per IP
-- **Telegram ACL** — super admin + `telegram-users.json` allowlist; `/start`, `/help`, `/whoami` open to all
+- **Logout CSRF** — `POST /logout` with session `_csrf` token; `GET /logout` redirects to `/dashboard` (no session destroy)
+- **Telegram ACL** — roles via `lib/telegramAccess.js`: `super_admin` (full + user mgmt), `operator` (AI, wizards, Repliz), `viewer` (read-only commands); `/start`, `/help`, `/whoami` open to all
 
 ## Database Schema
 
@@ -108,7 +111,8 @@ Copy `.env.example` → `.env` before running. Web validates env on startup via 
 | GET | `/produk` | Yes | Product UI |
 | GET | `/pemasaran` | Yes | Marketing plans UI |
 | GET | `/asisten` | Yes | AI chat UI |
-| GET | `/logout` | Yes | Destroy session + agent |
+| POST | `/logout` | Yes | Destroy session + agent (CSRF `_csrf` required) |
+| GET | `/logout` | No | Redirect → `/dashboard` (legacy bookmark) |
 | GET | `/health` | No | `{ status: 'ok', ... }` |
 
 ### Web API (`/api/*` — CSRF on POST/PUT/DELETE)
@@ -127,18 +131,16 @@ Copy `.env.example` → `.env` before running. Web validates env on startup via 
 
 ### Telegram commands (summary)
 
-| Command | Access | Purpose |
-|---------|--------|---------|
+| Command | Min role | Purpose |
+|---------|----------|---------|
 | `/start`, `/help`, `/whoami` | All | Onboarding, help, show user/chat IDs |
-| `/status` | Allowed | DB + AI session status |
-| `/listproduk`, `/tambahproduk` | Allowed | List products; product wizard |
-| `/buatkonten` | Allowed | Marketing content wizard |
-| `/jadwalkonten`, `/statuskonten`, `/ubahstatuskonten`, `/hapuskonten` | Allowed | Content calendar & status management |
-| `/jadwalkan`, `/postnow`, `/retrypost`, `/cekpost` | Allowed | Repliz schedule/post/sync |
+| `/status`, `/listproduk`, `/jadwalkonten`, `/statuskonten` | viewer | Status, list products, content calendar |
+| `/tambahproduk`, `/buatkonten`, `/jadwalkan`, `/postnow`, `/retrypost`, `/cekpost` | operator | Wizards, Repliz schedule/post/sync |
+| `/ubahstatuskonten`, `/hapuskonten` | super_admin | Mutate/delete content plans |
+| `/adduser`, `/removeuser`, `/listusers` | super_admin | Manage allowlist (`operator` or `viewer`) |
 | `/batal` | Allowed | Cancel active wizard |
-| `/adduser` | Super admin only | Add Telegram user to allowlist |
-| *(free text)* | Allowed | AI chat (rate-limited; wizards intercept first) |
-| *(photo)* | Allowed | Image step in content wizard (Cloudinary or local) |
+| *(free text)* | operator | AI chat (rate-limited; wizards intercept first) |
+| *(photo)* | operator | Image step in content wizard (Cloudinary or local) |
 
 ## Key Gotchas
 

@@ -8,7 +8,8 @@
   "scripts": {
     "start": "node server.js",
     "bot": "node telegram-bot.js",
-    "dev": "node server.js & node telegram-bot.js"
+    "dev": "node server.js & node telegram-bot.js",
+    "test": "node --test test/**/*.test.js"
   },
   "dependencies": {
     "@earendil-works/pi-coding-agent": "^0.79.6",

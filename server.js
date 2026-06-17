@@ -23,6 +23,7 @@ import { createRateLimiter } from './lib/rateLimit.js';
 import { normalizeAiMessage, AiMessageError } from './lib/aiLimits.js';
 import { assertValidImageBuffer, detectImageType, extForImageType } from './lib/imageFile.js';
 import { collectHealthStatus, getHealthHttpStatus } from './lib/health.js';
+import { ensureSessionCsrfToken, validateCsrfToken } from './lib/csrfToken.js';
 
 
 const __filename = fileURLToPath(import.meta.url);
@@ -312,6 +313,7 @@ app.post('/login', async (req, res) => {
         return res.type('html').send(loginPage('Terjadi kesalahan server. Silakan coba lagi.'));
       }
       req.session.user = { id: user.id, username: user.username };
+      ensureSessionCsrfToken(req.session);
       return res.redirect('/dashboard');
     });
   } catch (err) {
@@ -322,7 +324,8 @@ app.post('/login', async (req, res) => {
 
 // ---------- Dashboard (terproteksi) ----------
 app.get('/dashboard', requireLogin, (req, res) => {
-  res.type('html').send(dashboardPage(req.session.user.username));
+  const csrfToken = ensureSessionCsrfToken(req.session);
+  res.type('html').send(dashboardPage(req.session.user.username, csrfToken));
 });
 
 // ---------- Upload Gambar ----------
@@ -683,17 +686,20 @@ app.delete('/api/pemasaran/:id', requireLogin, async (req, res) => {
 
 // ---------- Halaman Produk ----------
 app.get('/produk', requireLogin, (req, res) => {
-  res.type('html').send(produkPage(req.session.user.username));
+  const csrfToken = ensureSessionCsrfToken(req.session);
+  res.type('html').send(produkPage(req.session.user.username, csrfToken));
 });
 
 // ---------- Halaman Pemasaran ----------
 app.get('/pemasaran', requireLogin, (req, res) => {
-  res.type('html').send(pemasaranPage(req.session.user.username));
+  const csrfToken = ensureSessionCsrfToken(req.session);
+  res.type('html').send(pemasaranPage(req.session.user.username, csrfToken));
 });
 
 // ---------- Halaman Asisten ----------
 app.get('/asisten', requireLogin, (req, res) => {
-  res.type('html').send(asistenPage(req.session.user.username));
+  const csrfToken = ensureSessionCsrfToken(req.session);
+  res.type('html').send(asistenPage(req.session.user.username, csrfToken));
 });
 
 // ---------- Chat API (SSE streaming) ----------
@@ -778,8 +784,7 @@ app.post('/api/asisten', requireLogin, chatRateLimiter, async (req, res) => {
 });
 
 // ---------- Logout ----------
-app.get('/logout', (req, res) => {
-  const sessionKey = req.sessionID;
+function cleanupAgentSession(sessionKey) {
   const agentSession = agentSessions.get(sessionKey);
   if (agentSession) {
     agentSession.abort().catch(() => {});
@@ -787,10 +792,22 @@ app.get('/logout', (req, res) => {
     agentSessionLastUsed.delete(sessionKey);
     agentSessionPromises.delete(sessionKey);
   }
+}
 
+app.post('/logout', requireLogin, (req, res) => {
+  if (!validateCsrfToken(req.session, req.body._csrf)) {
+    return res.status(403).redirect('/dashboard');
+  }
+
+  const sessionKey = req.sessionID;
+  cleanupAgentSession(sessionKey);
   req.session.destroy(() => {
     res.redirect('/login');
   });
+});
+
+app.get('/logout', (req, res) => {
+  res.redirect('/dashboard');
 });
 
 // ---------- Health check ----------
@@ -1019,7 +1036,7 @@ function loginPage(error) {
 </html>`;
 }
 
-function sidebarHTML(activePage, username) {
+function sidebarHTML(activePage, username, csrfToken) {
   const menu = [
     { id: 'dashboard', href: '/dashboard', icon: '📊', label: 'Dashboard' },
     { id: 'produk', href: '/produk', icon: '🛍️', label: 'Produk' },
@@ -1038,7 +1055,10 @@ function sidebarHTML(activePage, username) {
 ${navItems}
       </nav>
       <div class="sidebar-footer">
-        <a href="/logout"><span class="icon">🚪</span> Logout</a>
+        <form method="POST" action="/logout" class="logout-form">
+          <input type="hidden" name="_csrf" value="${escapeHtml(csrfToken)}">
+          <button type="submit" class="logout-btn"><span class="icon">🚪</span> Logout</button>
+        </form>
       </div>
       <div class="sidebar-user">
         <div class="avatar">${escapeHtml(username.charAt(0).toUpperCase())}</div>
@@ -1050,7 +1070,7 @@ ${navItems}
     </aside>`;
 }
 
-function dashboardPage(username) {
+function dashboardPage(username, csrfToken) {
   return `<!doctype html>
 <html lang="id">
 <head>
@@ -1152,6 +1172,28 @@ function dashboardPage(username) {
       color: #f87171;
     }
     .sidebar-footer a .icon { font-size: 18px; width: 24px; text-align: center; }
+    .logout-form { margin: 0; width: 100%; }
+    .logout-btn {
+      width: 100%;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 12px 20px;
+      color: #ef4444;
+      background: none;
+      border: none;
+      font-size: 14px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: background .15s, color .15s;
+      text-align: left;
+      font-family: inherit;
+    }
+    .logout-btn:hover {
+      background: rgba(239,68,68,.1);
+      color: #f87171;
+    }
+    .logout-btn .icon { font-size: 18px; width: 24px; text-align: center; }
 
     .sidebar-user {
       padding: 16px 20px;
@@ -1272,7 +1314,7 @@ function dashboardPage(username) {
 <body>
 
   <!-- Sidebar -->
-  ${sidebarHTML('dashboard', username)}
+  ${sidebarHTML('dashboard', username, csrfToken)}
 
   <!-- Main -->
   <main class="main">
@@ -1314,7 +1356,7 @@ function dashboardPage(username) {
 </html>`;
 }
 
-function produkPage(username) {
+function produkPage(username, csrfToken) {
   return `<!doctype html>
 <html lang="id">
 <head>
@@ -1385,6 +1427,20 @@ function produkPage(username) {
     }
     .sidebar-footer a:hover { background: rgba(239,68,68,.1); color: #f87171; }
     .sidebar-footer a .icon { font-size: 18px; width: 24px; text-align: center; }
+    .logout-form { margin: 0; width: 100%; }
+    .logout-btn {
+      width: 100%;
+      display: flex; align-items: center; gap: 12px;
+      padding: 12px 20px;
+      color: #ef4444;
+      background: none; border: none;
+      font-size: 14px; font-weight: 500;
+      cursor: pointer;
+      transition: background .15s, color .15s;
+      text-align: left; font-family: inherit;
+    }
+    .logout-btn:hover { background: rgba(239,68,68,.1); color: #f87171; }
+    .logout-btn .icon { font-size: 18px; width: 24px; text-align: center; }
     .sidebar-user {
       padding: 16px 20px;
       border-top: 1px solid rgba(255,255,255,.08);
@@ -1543,7 +1599,7 @@ function produkPage(username) {
 <body>
 
 <!-- Sidebar -->
-${sidebarHTML('produk', username)}
+${sidebarHTML('produk', username, csrfToken)}
 
 <!-- Main -->
 <main class="main">
@@ -1798,7 +1854,7 @@ loadProduk();
 </html>`;
 }
 
-function pemasaranPage(username) {
+function pemasaranPage(username, csrfToken) {
   return `<!doctype html>
 <html lang="id">
 <head>
@@ -1836,6 +1892,20 @@ function pemasaranPage(username) {
     .sidebar-footer a { display: flex; align-items: center; gap: 12px; padding: 12px 20px; color: var(--sidebar-text); text-decoration: none; font-size: 14px; transition: all .15s; }
     .sidebar-footer a:hover { background: rgba(239,68,68,.1); color: #f87171; }
     .sidebar-footer a .icon { font-size: 18px; width: 24px; text-align: center; }
+    .logout-form { margin: 0; width: 100%; }
+    .logout-btn {
+      width: 100%;
+      display: flex; align-items: center; gap: 12px;
+      padding: 12px 20px;
+      color: var(--sidebar-text);
+      background: none; border: none;
+      font-size: 14px; font-weight: 500;
+      cursor: pointer;
+      transition: background .15s, color .15s;
+      text-align: left; font-family: inherit;
+    }
+    .logout-btn:hover { background: rgba(239,68,68,.1); color: #f87171; }
+    .logout-btn .icon { font-size: 18px; width: 24px; text-align: center; }
     .sidebar-user { padding: 16px 20px; border-top: 1px solid rgba(255,255,255,.08); display: flex; align-items: center; gap: 12px; }
     .sidebar-user .avatar { width: 36px; height: 36px; border-radius: 50%; background: var(--sidebar-active); color: #fff; display: flex; align-items: center; justify-content: center; font-weight: 600; font-size: 14px; }
     .sidebar-user .info .name { color: #fff; font-weight: 600; font-size: 13px; }
@@ -1894,7 +1964,7 @@ function pemasaranPage(username) {
 </head>
 <body>
 
-${sidebarHTML('pemasaran', username)}
+${sidebarHTML('pemasaran', username, csrfToken)}
 
 <main class="main">
   <header class="topbar">
@@ -2175,7 +2245,7 @@ loadPlans();
 </html>`;
 }
 
-function asistenPage(username) {
+function asistenPage(username, csrfToken) {
   return `<!doctype html>
 <html lang="id">
 <head>
@@ -2237,6 +2307,20 @@ function asistenPage(username) {
       transition: background .15s, color .15s;
     }
     .sidebar-footer a:hover { background: rgba(239,68,68,.1); color: #f87171; }
+    .logout-form { margin: 0; width: 100%; }
+    .logout-btn {
+      width: 100%;
+      display: flex; align-items: center; gap: 12px;
+      padding: 12px 20px;
+      color: #ef4444;
+      background: none; border: none;
+      font-size: 14px; font-weight: 500;
+      cursor: pointer;
+      transition: background .15s, color .15s;
+      text-align: left; font-family: inherit;
+    }
+    .logout-btn:hover { background: rgba(239,68,68,.1); color: #f87171; }
+    .logout-btn .icon { font-size: 18px; width: 24px; text-align: center; }
     .sidebar-user {
       padding: 16px 20px;
       border-top: 1px solid rgba(255,255,255,.08);
@@ -2390,7 +2474,7 @@ function asistenPage(username) {
 </head>
 <body>
 
-${sidebarHTML('asisten', username)}
+${sidebarHTML('asisten', username, csrfToken)}
 
 <main class="main">
   <header class="topbar">
