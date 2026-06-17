@@ -16,6 +16,7 @@ import { dashboardPage } from '../lib/web/views/dashboard.js';
 import { produkPage } from '../lib/web/views/produk.js';
 import { pemasaranPage } from '../lib/web/views/pemasaran.js';
 import { asistenPage } from '../lib/web/views/asisten.js';
+import { evaluasiPage } from '../lib/web/views/evaluasi.js';
 
 // HTML attributes only — JS property assignment (saveBtn.onclick =) is CSP-safe
 const INLINE_HANDLER = /<[^>]+\son(click|change|keydown|submit|input)\s*=/i;
@@ -25,6 +26,7 @@ const pages = [
   ['produk', () => produkPage('qauser', 'csrf', { nonce: 'qa-nonce' })],
   ['pemasaran', () => pemasaranPage('qauser', 'csrf', { nonce: 'qa-nonce' })],
   ['asisten', () => asistenPage('qauser', 'csrf', { nonce: 'qa-nonce' })],
+  ['evaluasi', () => evaluasiPage('qauser', 'csrf', { nonce: 'qa-nonce' })],
 ];
 
 let failed = 0;
@@ -63,6 +65,8 @@ const actuatorFiles = [
   'lib/channels/instagram.js',
   'lib/channels/prompt.js',
   'lib/web/routes/api/channels.js',
+  'lib/evaluationMetrics.js',
+  'scripts/export-evaluation.mjs',
 ];
 for (const rel of actuatorFiles) {
   check(`actuator file exists: ${rel}`, () => {
@@ -120,6 +124,16 @@ const pemasaranHtml = pemasaranPage('qauser', 'csrf', { nonce: 'qa-nonce' });
 check('pemasaran: table delegation', () => {
   assert.match(pemasaranHtml, /getElementById\('pemasaran-list'\)\.addEventListener\('click'/);
   assert.match(pemasaranHtml, /data-action/);
+});
+
+const evaluasiHtml = evaluasiPage('qauser', 'csrf', { nonce: 'qa-nonce' });
+check('evaluasi: metrics fetch wired via addEventListener', () => {
+  assert.match(evaluasiHtml, /fetch\('\/api\/agent\/metrics/);
+  assert.match(evaluasiHtml, /getElementById\('btn-refresh'\)\.addEventListener\('click', loadMetrics\)/);
+});
+check('evaluasi: M1–M7 cards present', () => {
+  assert.match(evaluasiHtml, /M1 Planning success/);
+  assert.match(evaluasiHtml, /M7 Publish success/);
 });
 
 // HTTP smoke against running server (skip in CI with QA_SKIP_HTTP=1)

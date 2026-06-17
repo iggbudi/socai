@@ -21,6 +21,7 @@ npm run bot        # telegram bot (long-polling)
 npm run dev        # both in background (server.js & telegram-bot.js)
 npm test           # automated tests in test/
 npm run test:ci    # unit tests + qa-smoke (no HTTP; used by GitHub Actions)
+npm run eval:export  # export metrik penelitian M1–M7 (JSON)
 ```
 
 **systemd** (production): `socai-node.service` (web), `socai-bot.service` (bot)
@@ -72,6 +73,7 @@ Copy `.env.example` → `.env` before running. Web validates env on startup via 
 |--------|------|
 | `lib/agent.js` | AI agent (`@earendil-works/pi-coding-agent`), `pool` + `aiReadPool`, session map, `initAgent()`, tools `db_query` (SELECT-only), `web_search`, actuator tools (`get_calendar_gaps`, `save_content_plan`, `schedule_content`, `sync_content_status`), active run context exports, `closeAgentPools()` |
 | `lib/agentRuns.js` | Research audit log: `initAgentRunsSchema`, `createAgentRun`, `logToolCall`, `completeAgentRun`, `getAgentRunMetrics`, `listAgentRuns` |
+| `lib/evaluationMetrics.js` | Metrik penelitian M1–M7: `getEvaluationMetrics()`, `resolveEvaluationPeriod()` |
 | `lib/actuator/` | Bounded autonomy layer: `resolveAutonomyMode`, policy checks, wrappers around `pemasaran.js` write paths |
 | `lib/channels/` | Multi-channel adapter: `registry.js`, `threads.js`, `instagram.js`, `getChannel()`, `listChannels()`, `buildChannelsPromptSection()` |
 | `lib/pemasaran.js` | Shared pemasaran/Repliz logic: `savePlansToDb`, `schedulePlanToChannel` (alias `schedulePlanToRepliz`), `syncPlanReplizStatus`, `parseMarketingSchedule` |
@@ -138,6 +140,7 @@ Copy `.env.example` → `.env` before running. Web validates env on startup via 
 | GET | `/produk` | Yes | Product UI |
 | GET | `/pemasaran` | Yes | Marketing plans UI |
 | GET | `/asisten` | Yes | AI chat UI |
+| GET | `/evaluasi` | Yes | Research metrics dashboard (M1–M7) |
 | POST | `/logout` | Yes | Destroy session + agent (CSRF `_csrf` required) |
 | GET | `/logout` | No | Redirect → `/dashboard` (legacy bookmark) |
 | GET | `/health` | No | `{ status: 'ok', ... }` |
@@ -157,6 +160,7 @@ Copy `.env.example` → `.env` before running. Web validates env on startup via 
 | POST | `/api/pemasaran/:id/repliz/sync` | Sync Repliz status |
 | POST | `/api/asisten` | AI chat SSE stream (rate-limited) |
 | GET | `/api/agent/runs` | List recent `agent_runs` audit rows (`?limit=`, default 50) |
+| GET | `/api/agent/metrics` | Evaluation metrics M1–M7 (`?days=`, `?since=`, `?channel=`, `?autonomy_mode=`, `?source=`) |
 
 ### Telegram commands (summary)
 

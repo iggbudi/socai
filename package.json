@@ -10,7 +10,8 @@
     "bot": "node telegram-bot.js",
     "dev": "node server.js & node telegram-bot.js",
     "test": "node --test test/**/*.test.js",
-    "test:ci": "npm test && QA_SKIP_HTTP=1 node test/qa-smoke.mjs"
+    "test:ci": "npm test && QA_SKIP_HTTP=1 node test/qa-smoke.mjs",
+    "eval:export": "node scripts/export-evaluation.mjs"
   },
   "dependencies": {
     "@earendil-works/pi-coding-agent": "^0.79.6",

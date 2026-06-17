@@ -121,6 +121,62 @@ function createMockPool() {
         return { rowCount: before };
       }
 
+      if (text.includes('WITH agent_saved AS')) {
+        return { rows: [{ manual_saves: 0, manual_schedules: 0 }] };
+      }
+
+      if (text.includes('PERCENTILE_CONT(0.5)')) {
+        return { rows: [{ median_ms: null }] };
+      }
+
+      if (text.includes('days_in_window')) {
+        return { rows: [{ days_in_window: 7, days_with_content: 0 }] };
+      }
+
+      if (text.includes('total_scheduled')) {
+        return { rows: [{ total_scheduled: 0, posted: 0, failed: 0 }] };
+      }
+
+      if (text.includes('GROUP BY autonomy_mode')) {
+        const grouped = new Map();
+        for (const run of state.runs) {
+          const key = run.autonomy_mode || 'assistive';
+          const row = grouped.get(key) || {
+            autonomy_mode: key,
+            runs: 0,
+            plans_saved: 0,
+            plans_scheduled: 0,
+            errors: 0,
+          };
+          row.runs += 1;
+          row.plans_saved += run.plans_saved || 0;
+          row.plans_scheduled += run.plans_scheduled || 0;
+          if (run.status === 'error') row.errors += 1;
+          grouped.set(key, row);
+        }
+        return { rows: [...grouped.values()] };
+      }
+
+      if (text.includes('GROUP BY source')) {
+        const grouped = new Map();
+        for (const run of state.runs) {
+          const key = run.source || 'web';
+          const row = grouped.get(key) || {
+            source: key,
+            runs: 0,
+            plans_saved: 0,
+            plans_scheduled: 0,
+            errors: 0,
+          };
+          row.runs += 1;
+          row.plans_saved += run.plans_saved || 0;
+          row.plans_scheduled += run.plans_scheduled || 0;
+          if (run.status === 'error') row.errors += 1;
+          grouped.set(key, row);
+        }
+        return { rows: [...grouped.values()] };
+      }
+
       throw new Error(`Unhandled mock query: ${text.slice(0, 120)}`);
     },
   };

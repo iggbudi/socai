@@ -25,8 +25,38 @@ SELECT
 FROM agent_runs,
      LATERAL jsonb_array_elements(tools_called) AS elem;
 
--- M3: Human intervention count (placeholder — track manually or via UI events in P2)
--- SELECT ... manual ops not yet instrumented in agent_runs
+-- M3: Human intervention count (proxy — save/schedule tanpa agent_runs attribution)
+WITH agent_saved AS (
+  SELECT DISTINCT pid::integer AS id
+  FROM agent_runs ar, LATERAL unnest(ar.pemasaran_ids) pid
+  WHERE EXISTS (
+    SELECT 1 FROM jsonb_array_elements(ar.tools_called) e
+    WHERE e->>'name' = 'save_content_plan' AND e->>'status' = 'ok'
+  )
+),
+agent_scheduled AS (
+  SELECT DISTINCT pid::integer AS id
+  FROM agent_runs ar, LATERAL unnest(ar.pemasaran_ids) pid
+  WHERE EXISTS (
+    SELECT 1 FROM jsonb_array_elements(ar.tools_called) e
+    WHERE e->>'name' = 'schedule_content' AND e->>'status' = 'ok'
+  )
+)
+SELECT
+  (SELECT COUNT(*) FROM pemasaran p
+   WHERE p.created_at >= CURRENT_DATE - INTERVAL '30 days'
+     AND p.id NOT IN (SELECT id FROM agent_saved WHERE id IS NOT NULL)) AS manual_saves,
+  (SELECT COUNT(*) FROM pemasaran p
+   WHERE p.repliz_schedule_id IS NOT NULL
+     AND COALESCE(p.repliz_synced_at, p.scheduled_at, p.created_at) >= CURRENT_DATE - INTERVAL '30 days'
+     AND p.id NOT IN (SELECT id FROM agent_scheduled WHERE id IS NOT NULL)) AS manual_schedules,
+  (SELECT COUNT(*) FROM pemasaran p
+   WHERE p.created_at >= CURRENT_DATE - INTERVAL '30 days'
+     AND p.id NOT IN (SELECT id FROM agent_saved WHERE id IS NOT NULL))
+  + (SELECT COUNT(*) FROM pemasaran p
+     WHERE p.repliz_schedule_id IS NOT NULL
+       AND COALESCE(p.repliz_synced_at, p.scheduled_at, p.created_at) >= CURRENT_DATE - INTERVAL '30 days'
+       AND p.id NOT IN (SELECT id FROM agent_scheduled WHERE id IS NOT NULL)) AS m3_human_intervention_count;
 
 -- M4: Time-to-publish median (agent run start → pemasaran.published_at)
 SELECT
@@ -46,16 +76,20 @@ SELECT
   ROUND(100.0 * COUNT(*) FILTER (WHERE status = 'error') / NULLIF(COUNT(*), 0), 2) AS m5_tool_error_pct
 FROM agent_runs;
 
--- M6: Calendar coverage (% distinct scheduled days with threads content in next 7 days)
-WITH upcoming AS (
+-- M6: Calendar coverage (% distinct scheduled days with enabled-channel content in next 7 days)
+-- Sesuaikan array kanal dengan ENABLED_CHANNELS (default: threads)
+WITH channels AS (
+  SELECT unnest(ARRAY['threads']::text[]) AS kanal
+),
+upcoming AS (
   SELECT generate_series(CURRENT_DATE, CURRENT_DATE + INTERVAL '6 days', INTERVAL '1 day')::date AS day
 ),
 filled AS (
-  SELECT DISTINCT (COALESCE(scheduled_at, repliz_scheduled_at, created_at))::date AS day
-  FROM pemasaran
-  WHERE lower(coalesce(kanal, '')) = 'threads'
-    AND COALESCE(scheduled_at, repliz_scheduled_at, created_at) >= CURRENT_DATE
-    AND COALESCE(scheduled_at, repliz_scheduled_at, created_at) < CURRENT_DATE + INTERVAL '7 days'
+  SELECT DISTINCT (COALESCE(p.scheduled_at, p.repliz_scheduled_at, p.created_at))::date AS day
+  FROM pemasaran p
+  INNER JOIN channels c ON lower(coalesce(p.kanal, 'threads')) = c.kanal
+  WHERE COALESCE(p.scheduled_at, p.repliz_scheduled_at, p.created_at) >= CURRENT_DATE
+    AND COALESCE(p.scheduled_at, p.repliz_scheduled_at, p.created_at) < CURRENT_DATE + INTERVAL '7 days'
 )
 SELECT
   COUNT(DISTINCT u.day) AS days_in_window,
@@ -65,6 +99,9 @@ FROM upcoming u
 LEFT JOIN filled f ON f.day = u.day;
 
 -- M7: Publish outcome (% posted vs failed from repliz_status)
+WITH channels AS (
+  SELECT unnest(ARRAY['threads']::text[]) AS kanal
+)
 SELECT
   COUNT(*) AS total_scheduled,
   COUNT(*) FILTER (WHERE repliz_status = 'success' OR status = 'posted') AS posted,
@@ -74,9 +111,9 @@ SELECT
     / NULLIF(COUNT(*), 0),
     2
   ) AS m7_posted_pct
-FROM pemasaran
-WHERE lower(coalesce(kanal, '')) = 'threads'
-  AND repliz_schedule_id IS NOT NULL;
+FROM pemasaran p
+INNER JOIN channels c ON lower(coalesce(p.kanal, 'threads')) = c.kanal
+WHERE repliz_schedule_id IS NOT NULL;
 
 -- Breakdown by autonomy mode
 SELECT

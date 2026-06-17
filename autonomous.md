@@ -1,6 +1,6 @@
 # autonomous.md — Rencana Bounded Autonomous Agent
 
-**Status:** P1 ✅ implemented (`75560a5`) · P2 ✅ implemented (`a9f8315`) · P3 ✅ implemented
+**Status:** P1 ✅ (`75560a5`) · P2 ✅ (`a9f8315`) · P3 ✅ (`edc6b3a`) · Evaluasi ✅
 **Tanggal:** 17 Juni 2026  
 **Proyek:** socai.my.id — Batik Bakaran  
 **Judul penelitian:** *Autonomous AI Agent untuk Otomasi Konten Media Sosial*
@@ -491,6 +491,7 @@ node --check lib/actuator/index.js
 | ~~P2~~ | ~~Purge `agent_runs`~~ | ✅ `purgeOldAgentRuns()` + `AGENT_RUNS_PURGE_INTERVAL_MS` |
 | ~~P3~~ | ~~Multi-channel adapter~~ | ✅ `lib/channels/` — Threads + Instagram via Repliz |
 | ~~P3~~ | ~~CI GitHub Actions~~ | ✅ `.github/workflows/ci.yml` — `npm run test:ci` |
+| ~~Evaluasi~~ | ~~Metrik M1–M7 + dashboard~~ | ✅ `lib/evaluationMetrics.js`, `/evaluasi`, `npm run eval:export` |
 
 ---
 
@@ -499,7 +500,7 @@ node --check lib/actuator/index.js
 - [ ] Review plan ini (stakeholder / pembimbing)
 - [ ] Backup PostgreSQL
 - [ ] Tentukan mode default staging: `supervised`
-- [ ] Siapkan spreadsheet metrik M1–M7 untuk sesi uji
+- [ ] Siapkan spreadsheet metrik M1–M7 untuk sesi uji (template kolom di `evaluasi.md` §3)
 - [ ] Konfirmasi Repliz credential aktif untuk S3
 
 ---
