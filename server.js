@@ -1,6 +1,7 @@
 import 'dotenv/config';
 import { validateWebEnvironment } from './lib/env.js';
 import { pool, agentSessions, agentSessionLastUsed, agentSessionPromises, closeAgentPools } from './lib/agent.js';
+import { initAgentRunsSchema } from './lib/agentRuns.js';
 import { createWebApp } from './lib/web/createApp.js';
 import {
   syncPendingReplizStatuses,
@@ -98,7 +99,7 @@ function shutdown(signal) {
 process.once('SIGINT', () => shutdown('SIGINT'));
 process.once('SIGTERM', () => shutdown('SIGTERM'));
 
-initPemasaranReplizSchema()
+Promise.all([initPemasaranReplizSchema(), initAgentRunsSchema(pool)])
   .then(() => {
     httpServer = app.listen(port, '127.0.0.1', () => {
       console.log(`socai.my.id listening on http://127.0.0.1:${port}`);
@@ -136,6 +137,6 @@ initPemasaranReplizSchema()
     }
   })
   .catch((err) => {
-    console.error('Failed to initialize Repliz database schema:', err.message);
+    console.error('Failed to initialize database schema:', err.message);
     process.exit(1);
   });

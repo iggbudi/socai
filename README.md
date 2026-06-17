@@ -16,7 +16,8 @@ Aplikasi menggabungkan **web dashboard**, **bot Telegram**, **AI agent berbasis 
 
 - **Manajemen produk** — CRUD produk, upload gambar (magic-byte validation)
 - **Perencanaan pemasaran** — rencana konten Threads, kalender, status
-- **Asisten AI** — chat SSE di web & Telegram; tools `db_query` (read-only) & `web_search`
+- **Asisten AI** — chat SSE di web & Telegram; tools `db_query` (read-only), `web_search`, dan actuator terkontrol (`save_content_plan`, `schedule_content`, …)
+- **Bounded autonomy (P1)** — `AUTONOMY_MODE`, actuator `lib/actuator/`, audit log `agent_runs`
 - **Otomasi Repliz** — jadwalkan, post now, retry, sync status, auto-schedule background
 - **Bot Telegram** — wizard konten/produk, role-based ACL (`super_admin` / `operator` / `viewer`)
 - **Keamanan** — CSRF, CSP nonce, rate limit, Helmet, DB read-only untuk AI
@@ -71,7 +72,45 @@ socai/
 
 ### Gambaran Umum
 
-Sistem berlapis **presentation → application → AI agent → data → external services**. AI agent bersifat **bounded**: hanya membaca database; penulisan data dan publish ke media sosial dilakukan melalui **actuator** (API, wizard, cron Repliz) dengan human-in-the-loop.
+Sistem berlapis **presentation → application → AI agent → actuator → data → external services**. Siklus penelitian: **Perceive → Plan → Act → Evaluate**.
+
+```mermaid
+flowchart LR
+    subgraph Perceive["Perceive"]
+        DB["db_query\nproduk & pemasaran"]
+        WS["web_search\ntren & riset"]
+        GAP["get_calendar_gaps"]
+    end
+
+    subgraph Plan["Plan"]
+        LLM["LLM Agent\nrencana + copywriting"]
+    end
+
+    subgraph Act["Act (bounded)"]
+        SAVE["save_content_plan"]
+        SCHED["schedule_content"]
+        SYNC["sync_content_status"]
+    end
+
+    subgraph Evaluate["Evaluate"]
+        RUNS["agent_runs\naudit log"]
+        MET["Metrik M1–M7"]
+        REP["Repliz status"]
+    end
+
+    DB --> LLM
+    WS --> LLM
+    GAP --> LLM
+    LLM --> SAVE
+    SAVE --> SCHED
+    SCHED --> REP
+    LLM --> RUNS
+    SAVE --> RUNS
+    SCHED --> RUNS
+    REP --> SYNC
+    SYNC --> DB
+    RUNS --> MET
+```
 
 ```mermaid
 flowchart TB
@@ -82,25 +121,24 @@ flowchart TB
 
     subgraph Application["Lapisan Aplikasi"]
         EXP["Express lib/web\nREST API + SSE"]
-        BOT["telegraf-bot.js"]
+        BOT["telegram-bot.js"]
         JOBS["replizJobs\nauto-schedule & sync"]
     end
 
     subgraph Agent["Lapisan AI Agent"]
-        AG["lib/agent.js\nPi Coding Agent"]
-        T1["db_query\nSELECT only"]
-        T2["web_search\nBrave API"]
+        AG["lib/agent.js"]
+        ACT["lib/actuator/\npolicy + wrappers"]
+        AR["lib/agentRuns.js"]
     end
 
     subgraph Data["Lapisan Data"]
-        PG[("PostgreSQL\nproduk, pemasaran\nusers, sessions")]
+        PG[("PostgreSQL\nproduk, pemasaran\nagent_runs, sessions")]
         RO[("socai_ai_read\nread-only pool")]
     end
 
     subgraph External["Layanan Eksternal"]
         REP["Repliz API\nThreads"]
-        CLD["Cloudinary"]
-        LLM["LLM Provider\nXiaomi MiMo"]
+        LLM["LLM Provider"]
         BR["Brave Search"]
     end
 
@@ -108,26 +146,23 @@ flowchart TB
     TG --> BOT
     EXP --> AG
     BOT --> AG
-    AG --> T1 --> RO --> PG
-    AG --> T2 --> BR
+    AG --> ACT --> PG
+    ACT --> AR --> PG
+    AG --> RO --> PG
+    AG --> BR
     AG --> LLM
-    EXP --> PG
-    BOT --> PG
-    EXP --> REP
-    BOT --> REP
-    JOBS --> REP
-    JOBS --> PG
-    BOT --> CLD
+    JOBS --> REP --> PG
 ```
 
 ### Prinsip Arsitektur
 
 | Prinsip | Implementasi |
 |---------|--------------|
-| **Bounded autonomy** | Agent hanya `SELECT`; simpan & publish via UI/bot/cron |
-| **Shared core** | `lib/agent.js`, `lib/pemasaran.js` dipakai web & bot |
-| **Defense in depth** | CSRF, CSP nonce, rate limit, role ACL, URL whitelist |
-| **Human-in-the-loop** | Simpan rencana, jadwalkan Repliz, approve konten |
+| **Bounded autonomy** | `db_query` SELECT-only; write via actuator + `AUTONOMY_MODE` (`assistive` / `supervised` / `bounded`) |
+| **Shared core** | `lib/agent.js`, `lib/pemasaran.js`, `lib/actuator/` dipakai web & bot |
+| **Defense in depth** | CSRF, CSP nonce, rate limit, role ACL, URL whitelist, policy caps |
+| **Observability** | Setiap agent run & tool call tercatat di `agent_runs` |
+| **Human-in-the-loop** | Default `assistive`; supervised/bounded untuk skenario penelitian |
 
 ---
 

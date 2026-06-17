@@ -6,6 +6,8 @@ import crypto from 'crypto';
 import { fileURLToPath } from 'url';
 import { validateBotEnvironment } from './lib/env.js';
 import { pool, agentSessions, agentSessionLastUsed, agentSessionPromises, touchAgentSession, initAgent } from './lib/agent.js';
+import { createAgentRun, completeAgentRun } from './lib/agentRuns.js';
+import { resolveAutonomyMode } from './lib/actuator/index.js';
 import { isReplizConfigured } from './lib/repliz.js';
 import {
   savePlansToDb,
@@ -403,8 +405,35 @@ bot.on('text', async (ctx, next) => {
       } catch (_) {}
     });
 
+    let agentRunId = null;
+    try {
+      const run = await createAgentRun(pool, {
+        session_key: sessionKey,
+        source: 'telegram',
+        autonomy_mode: resolveAutonomyMode('telegram'),
+        trigger_type: 'chat',
+        user_prompt: message,
+        model_ref: process.env.TELEGRAM_AI_MODEL || process.env.AI_MODEL || null,
+      });
+      agentRunId = run.id;
+    } catch (err) {
+      console.error(`[Telegram] createAgentRun error for chat ${chatId}:`, err.message);
+    }
+
     console.log(`[${chatId}] Sending prompt to AI: "${message.slice(0, 50)}..."`);
-    await agentSession.prompt(message);
+    try {
+      await agentSession.prompt(message);
+      if (agentRunId) {
+        await completeAgentRun(pool, agentRunId, { status: 'completed' });
+        agentRunId = null;
+      }
+    } catch (promptErr) {
+      if (agentRunId) {
+        await completeAgentRun(pool, agentRunId, { status: 'error', error_message: promptErr.message }).catch(() => {});
+        agentRunId = null;
+      }
+      throw promptErr;
+    }
     console.log(`[${chatId}] Prompt completed, response length: ${fullText.length}`);
     unsubscribe();
 

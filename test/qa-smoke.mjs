@@ -3,7 +3,14 @@
  * Exits 0 if all checks pass, 1 otherwise.
  */
 import assert from 'node:assert/strict';
+import fs from 'node:fs';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { createWebApp } from '../lib/web/createApp.js';
+import { getAutonomyConfig } from '../lib/actuator/policy.js';
+
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
+const repoRoot = path.join(__dirname, '..');
 import { loginPage } from '../lib/web/views/login.js';
 import { dashboardPage } from '../lib/web/views/dashboard.js';
 import { produkPage } from '../lib/web/views/produk.js';
@@ -36,6 +43,32 @@ check('createWebApp exports app', () => {
   const { app } = createWebApp();
   assert.ok(app);
   assert.equal(typeof app.listen, 'function');
+});
+
+const actuatorFiles = [
+  'lib/actuator/index.js',
+  'lib/actuator/policy.js',
+  'lib/actuator/calendar.js',
+  'lib/actuator/contentPlan.js',
+  'lib/actuator/schedule.js',
+  'lib/agentRuns.js',
+];
+for (const rel of actuatorFiles) {
+  check(`actuator file exists: ${rel}`, () => {
+    assert.ok(fs.existsSync(path.join(repoRoot, rel)));
+  });
+}
+
+check('AUTONOMY_MODE defaults to assistive in policy', () => {
+  const prev = process.env.AUTONOMY_MODE;
+  delete process.env.AUTONOMY_MODE;
+  try {
+    const config = getAutonomyConfig();
+    assert.equal(config.autonomyMode, 'assistive');
+  } finally {
+    if (prev === undefined) delete process.env.AUTONOMY_MODE;
+    else process.env.AUTONOMY_MODE = prev;
+  }
 });
 
 for (const [name, render] of pages) {
@@ -98,6 +131,16 @@ try {
     assert.equal(health.status, 200);
     assert.equal(healthJson.status, 'ok');
     assert.equal(healthJson.checks.database.ok, true);
+  });
+
+  const healthDetail = await fetch(`${base}/health?detail=1`);
+  const healthDetailJson = await healthDetail.json();
+  await httpCheck('HTTP /health?detail=1 autonomy fields', async () => {
+    assert.equal(healthDetail.status, 200);
+    assert.ok('autonomy_mode' in healthDetailJson.checks);
+    assert.ok('agent_runs_ready' in healthDetailJson.checks);
+    assert.equal(typeof healthDetailJson.checks.autonomy_mode, 'string');
+    assert.equal(typeof healthDetailJson.checks.agent_runs_ready, 'boolean');
   });
 
   const loginGet = await fetch(`${base}/login`);

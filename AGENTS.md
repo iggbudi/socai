@@ -49,6 +49,12 @@ Copy `.env.example` → `.env` before running. Web validates env on startup via 
 | `XIAOMI_API_KEY` | Required when Xiaomi MiMo models are configured |
 | `XIAOMI_TOKEN_PLAN_CN_API_KEY`, `XIAOMI_TOKEN_PLAN_AMS_API_KEY`, `XIAOMI_TOKEN_PLAN_SGP_API_KEY` | Alternate Xiaomi provider keys |
 | `BRAVE_API_KEY` | Enables AI `web_search` tool |
+| `AUTONOMY_MODE` | Global bounded autonomy: `assistive` (default), `supervised`, `bounded` |
+| `WEB_AUTONOMY_MODE`, `TELEGRAM_AUTONOMY_MODE` | Per-channel override of `AUTONOMY_MODE` |
+| `REQUIRE_APPROVAL` | If `true`, blocks agent `schedule_content` (P2 approve hook) |
+| `MAX_AGENT_SAVES_PER_RUN` | Cap plans saved per agent response (default `7`) |
+| `MAX_AGENT_SCHEDULES_PER_DAY` | Daily cap for agent-driven Repliz schedules (default `10`) |
+| `AGENT_RUNS_RETAIN_DAYS` | Retention hint for `agent_runs` log purge (P2, default `90`) |
 | `TELEGRAM_BOT_TOKEN` | Bot token from @BotFather (aliases: `BOT_TOKEN`, `TELEGRAM_TOKEN`) |
 | `PORT` | Web server port (default `3010`) |
 
@@ -56,7 +62,9 @@ Copy `.env.example` → `.env` before running. Web validates env on startup via 
 
 | Module | Role |
 |--------|------|
-| `lib/agent.js` | AI agent (`@earendil-works/pi-coding-agent`), `pool` + `aiReadPool`, session map, `initAgent()`, tools `db_query` (SELECT-only, table whitelist) & `web_search`, `closeAgentPools()` |
+| `lib/agent.js` | AI agent (`@earendil-works/pi-coding-agent`), `pool` + `aiReadPool`, session map, `initAgent()`, tools `db_query` (SELECT-only), `web_search`, actuator tools (`get_calendar_gaps`, `save_content_plan`, `schedule_content`, `sync_content_status`), active run context exports, `closeAgentPools()` |
+| `lib/agentRuns.js` | Research audit log: `initAgentRunsSchema`, `createAgentRun`, `logToolCall`, `completeAgentRun`, `getAgentRunMetrics`, `listAgentRuns` |
+| `lib/actuator/` | Bounded autonomy layer: `resolveAutonomyMode`, policy checks, wrappers around `pemasaran.js` write paths |
 | `lib/pemasaran.js` | Shared pemasaran/Repliz logic: `savePlansToDb`, `schedulePlanToRepliz`, `syncPlanReplizStatus`, `parseMarketingSchedule` |
 | `lib/mediaUrl.js` | `sanitizeImageUrl()` — HTTPS whitelist, blocks `javascript:`/`data:`/`http://`, allows `/uploads/...` |
 | `lib/imageFile.js` | Magic-byte detection (`jpeg`/`png`/`gif`/`webp`), `assertValidImageBuffer()` |
@@ -98,6 +106,9 @@ Copy `.env.example` → `.env` before running. Web validates env on startup via 
 --   repliz_last_error, repliz_synced_at, repliz_attempts (default 0)
 --   auto_schedule_enabled (default true)
 -- user_sessions: managed by connect-pg-simple
+-- agent_runs: id, run_id, session_key, source, autonomy_mode, trigger_type, user_prompt,
+--   status, model_ref, tools_called (jsonb), plans_saved, plans_scheduled, pemasaran_ids,
+--   error_message, started_at, ended_at, duration_ms
 ```
 
 ## Routes
@@ -129,6 +140,7 @@ Copy `.env.example` → `.env` before running. Web validates env on startup via 
 | POST | `/api/pemasaran/:id/repliz/retry` | Retry failed Repliz post |
 | POST | `/api/pemasaran/:id/repliz/sync` | Sync Repliz status |
 | POST | `/api/asisten` | AI chat SSE stream (rate-limited) |
+| GET | `/api/agent/runs` | List recent `agent_runs` audit rows (`?limit=`, default 50) |
 
 ### Telegram commands (summary)
 
@@ -150,7 +162,8 @@ Copy `.env.example` → `.env` before running. Web validates env on startup via 
 - **`SESSION_SECRET`** — auto-random if missing; sessions lost on restart
 - **AI agent lazy init** — first `/api/asisten` or Telegram message triggers `initAgent()`; expect delay
 - **Separate AI sessions** — web uses `sessionID`; Telegram uses `telegram:{chatId}`; Telegram can use `TELEGRAM_AI_MODEL*`
-- **AI DB writes** — agent is SELECT-only; product/content creation via web UI or bot wizards (`/tambahproduk`, `/buatkonten`)
+- **AI DB writes** — `db_query` remains SELECT-only; bounded writes via actuator tools (`save_content_plan`, `schedule_content`) gated by `AUTONOMY_MODE`; manual paths still available via web UI or bot wizards
+- **`AUTONOMY_MODE`** — default `assistive` (safe); set `supervised`/`bounded` for research scenarios; see `autonomous.md`
 - **`DB_AI_READ_*`** — without dedicated read-only user, `db_query` runs as `DB_USER` (warned at startup)
 - **Repliz optional** — scheduling commands no-op/error if `REPLIZ_*` unset; background sync/auto-schedule in `server.js` when configured
 - **Cloudinary optional** — Telegram wizard falls back to local `public/uploads/` if unset
