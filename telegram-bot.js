@@ -5,9 +5,14 @@ import path from 'path';
 import crypto from 'crypto';
 import { fileURLToPath } from 'url';
 import { validateBotEnvironment } from './lib/env.js';
-import { sanitizeImageUrl } from './lib/mediaUrl.js';
 import { pool, agentSessions, agentSessionLastUsed, agentSessionPromises, touchAgentSession, initAgent } from './lib/agent.js';
-import { createThreadsSchedule, getReplizSchedule, isReplizConfigured } from './lib/repliz.js';
+import { isReplizConfigured } from './lib/repliz.js';
+import {
+  savePlansToDb,
+  schedulePlanToRepliz,
+  schedulePlanToReplizNow,
+  syncPlanReplizStatus,
+} from './lib/pemasaran.js';
 import { normalizeAiMessage, AiMessageError } from './lib/aiLimits.js';
 import { createRateLimiter } from './lib/rateLimit.js';
 import { assertValidImageBuffer, detectImageType, extForImageType } from './lib/imageFile.js';
@@ -142,91 +147,6 @@ bot.use(async (ctx, next) => {
 
   return next();
 });
-
-// ---------- Helper: simpan rencana ke database ----------
-async function savePlansToDb(planData) {
-  const normalizePlansInput = (body) => {
-    if (Array.isArray(body)) return body;
-    if (Array.isArray(body?.rencana_mingguan)) return body.rencana_mingguan;
-    if (Array.isArray(body?.rencana)) return body.rencana;
-    if (Array.isArray(body?.plans)) return body.plans;
-    return [body];
-  };
-  const toText = (value) => {
-    if (value === undefined || value === null) return null;
-    if (Array.isArray(value)) return value.filter(Boolean).map(toText).filter(Boolean).join(', ');
-    if (typeof value === 'object') return JSON.stringify(value);
-    const text = String(value).trim();
-    return text || null;
-  };
-  const limitText = (value, max) => {
-    const text = toText(value);
-    return text && text.length > max ? text.slice(0, max) : text;
-  };
-  const normalizePlan = (rawPlan, index) => {
-    const rawGambar = toText(rawPlan?.gambar || rawPlan?.image || rawPlan?.image_url || rawPlan?.url_gambar);
-    let gambar = '';
-    if (rawGambar) {
-      gambar = sanitizeImageUrl(rawGambar, { allowEmpty: true });
-    }
-    return {
-      judul: limitText(rawPlan?.judul || rawPlan?.title || `Rencana Threads Hari ${index + 1}`, 255),
-      strategi: toText(rawPlan?.strategi || rawPlan?.strategy),
-      target_audiens: limitText(rawPlan?.target_audiens || rawPlan?.target || rawPlan?.audience, 255),
-      kanal: 'threads',
-      jadwal: toText(rawPlan?.jadwal || rawPlan?.schedule),
-      scheduled_at: toText(rawPlan?.scheduled_at || rawPlan?.schedule_at || rawPlan?.scheduledAt),
-      copywriting: toText(rawPlan?.copywriting || rawPlan?.caption || rawPlan?.copy),
-      produk_terkait: limitText(rawPlan?.produk_terkait || rawPlan?.produk || rawPlan?.product, 255),
-      gambar,
-    };
-  };
-
-  const rawPlans = normalizePlansInput(planData).filter(Boolean);
-  const plans = rawPlans.map(normalizePlan);
-  if (plans.length === 0 || plans.some(plan => !plan.judul || !plan.strategi)) {
-    throw new Error('Data rencana tidak valid. Pastikan setiap item memiliki judul dan strategi.');
-  }
-
-  const client = await pool.connect();
-  try {
-    await client.query('BEGIN');
-    const saved = [];
-    const seenSchedules = new Set();
-    for (const plan of plans) {
-      const scheduleKey = (plan.jadwal || '').toLowerCase().replace(/\s+/g, ' ').trim();
-      if (scheduleKey) {
-        if (seenSchedules.has(scheduleKey)) {
-          throw new Error(`Jadwal duplikat dalam rencana yang sama: ${plan.jadwal}`);
-        }
-        seenSchedules.add(scheduleKey);
-        const duplicate = await client.query(
-          `SELECT id, judul, jadwal FROM pemasaran
-           WHERE lower(regexp_replace(coalesce(jadwal, ''), '\\s+', ' ', 'g')) = $1
-             AND lower(coalesce(kanal, '')) = 'threads'
-           LIMIT 1`,
-          [scheduleKey]
-        );
-        if (duplicate.rows.length > 0) {
-          throw new Error(`Jadwal sudah ada di pemasaran Threads: ${plan.jadwal}. Buat jadwal lanjutan agar tidak menumpuk.`);
-        }
-      }
-      const result = await client.query(
-        `INSERT INTO pemasaran (judul, strategi, target_audiens, kanal, jadwal, scheduled_at, copywriting, produk_terkait, gambar, status)
-         VALUES ($1, $2, $3, $4, $5, NULLIF($6, '')::timestamptz, $7, $8, $9, 'draft') RETURNING *`,
-        [plan.judul, plan.strategi, plan.target_audiens, plan.kanal, plan.jadwal, plan.scheduled_at, plan.copywriting, plan.produk_terkait, plan.gambar]
-      );
-      saved.push(result.rows[0]);
-    }
-    await client.query('COMMIT');
-    return saved;
-  } catch (err) {
-    await client.query('ROLLBACK').catch(() => {});
-    throw err;
-  } finally {
-    client.release();
-  }
-}
 
 // ---------- Handler: /start ----------
 bot.start(async (ctx) => {
@@ -1151,7 +1071,7 @@ bot.action('save_plan', async (ctx) => {
   await ctx.editMessageReplyMarkup({ inline_keyboard: [] });
 
   try {
-    const saved = await savePlansToDb(planData);
+    const saved = await savePlansToDb(planData, pool);
     const count = Array.isArray(saved) ? saved.length : 1;
     await ctx.reply(`✅ ${count} rencana pemasaran berhasil disimpan ke database!`);
     pendingPlans.delete(chatId);
@@ -1210,96 +1130,21 @@ bot.command('hapuskonten', async (ctx) => {
   return ctx.reply(`✅ Rencana #${result.rows[0].id} dihapus: ${result.rows[0].judul || '-'}`);
 });
 
-const bulanIndonesia = {
-  jan: 0, januari: 0,
-  feb: 1, februari: 1,
-  mar: 2, maret: 2,
-  apr: 3, april: 3,
-  mei: 4,
-  jun: 5, juni: 5,
-  jul: 6, juli: 6,
-  agu: 7, agustus: 7,
-  sep: 8, september: 8,
-  okt: 9, oktober: 9,
-  nov: 10, november: 10,
-  des: 11, desember: 11,
-};
-
-function parseMarketingSchedule(plan) {
-  const raw = plan?.scheduled_at || plan?.repliz_scheduled_at;
-  if (raw) {
-    const parsed = new Date(raw);
-    if (!Number.isNaN(parsed.getTime())) return parsed;
-  }
-  const text = String(plan?.jadwal || '').trim().toLowerCase();
-  const isoLike = text.match(/(\d{4})-(\d{1,2})-(\d{1,2})(?:[ t,]+(\d{1,2})(?::|\.)(\d{2}))?/i);
-  if (isoLike) {
-    const [, y, m, d, hh = '0', mm = '0'] = isoLike;
-    const date = new Date(Number(y), Number(m) - 1, Number(d), Number(hh), Number(mm));
-    if (!Number.isNaN(date.getTime())) return date;
-  }
-  const idDate = text.match(/(\d{1,2})\s+([a-z]+)\s+(\d{4})/i);
-  if (idDate) {
-    const time = text.match(/(?:jam|pukul)?\s*(\d{1,2})(?:[:.](\d{2}))\s*(?:wib)?/i);
-    const date = new Date(Number(idDate[3]), bulanIndonesia[idDate[2]], Number(idDate[1]), time ? Number(time[1]) : 0, time ? Number(time[2]) : 0);
-    if (!Number.isNaN(date.getTime())) return date;
-  }
-  return null;
-}
-
-function extractReplizScheduleId(response) {
-  return response?.scheduleId || response?.id || response?._id || response?.data?.scheduleId || response?.data?.id || response?.data?._id || response?.schedule?.id || null;
-}
-
-function normalizeReplizStatus(schedule) {
-  const status = String(schedule?.status || '').toLowerCase();
-  if (['pending', 'process', 'error', 'success'].includes(status)) return status;
-  return status || 'unknown';
-}
-
-async function syncReplizPlanStatus(id) {
-  const plan = await getPlanById(id);
-  if (!plan) throw new Error('Rencana konten tidak ditemukan.');
-  if (!plan.repliz_schedule_id) throw new Error('Rencana ini belum punya schedule id Repliz.');
-  const schedule = await getReplizSchedule(plan.repliz_schedule_id);
-  const replizStatus = normalizeReplizStatus(schedule);
-  const localStatus = replizStatus === 'success' ? 'posted' : replizStatus === 'error' ? 'failed' : 'scheduled';
-  const saved = await pool.query(
-    `UPDATE pemasaran
-     SET repliz_status = $2,
-         repliz_synced_at = NOW(),
-         external_status = $2,
-         status = $3,
-         published_at = CASE WHEN $2 = 'success' THEN coalesce(published_at, NOW()) ELSE published_at END,
-         repliz_last_error = CASE WHEN $2 = 'error' THEN coalesce($4, repliz_last_error) ELSE NULL END,
-         last_error = CASE WHEN $2 = 'error' THEN coalesce($4, last_error) ELSE NULL END
-     WHERE id = $1 RETURNING *`,
-    [id, replizStatus, localStatus, schedule?.error || schedule?.message || null]
-  );
-  return { plan: saved.rows[0], repliz: schedule };
-}
-
 async function scheduleViaRepliz(ctx, id, { postNow = false, force = false } = {}) {
   if (!/^\d+$/.test(String(id || ''))) return ctx.reply('Format: /jadwalkan ID atau /postnow ID atau /retrypost ID');
   if (!isReplizConfigured()) return ctx.reply('⚠️ Repliz belum dikonfigurasi. Isi REPLIZ_API_KEY, REPLIZ_SECRET, dan REPLIZ_ACCOUNT_ID.');
   const plan = await getPlanById(id);
   if (!plan) return ctx.reply('Rencana konten tidak ditemukan.');
-  if (plan.repliz_schedule_id && !postNow && !force) return ctx.reply(`ℹ️ Konten #${id} sudah punya Repliz schedule id: ${plan.repliz_schedule_id}\nGunakan /cekpost ${id} untuk cek status.`);
-  const parsedSchedule = parseMarketingSchedule(plan);
-  const scheduleAt = postNow ? new Date(Date.now() + 60_000).toISOString() : parsedSchedule?.toISOString();
-  if (!scheduleAt) return ctx.reply('Jadwal belum bisa diparse. Gunakan format seperti: 2026-06-05 19:00 atau 5 Juni 2026 jam 19:00.');
-  await pool.query('UPDATE pemasaran SET status = $2::varchar, repliz_status = $2::text, repliz_attempts = coalesce(repliz_attempts,0)+1, scheduled_at = $3, repliz_last_error = NULL WHERE id = $1', [id, 'posting', scheduleAt]);
+  if (plan.repliz_schedule_id && !postNow && !force) {
+    return ctx.reply(`ℹ️ Konten #${id} sudah punya Repliz schedule id: ${plan.repliz_schedule_id}\nGunakan /cekpost ${id} untuk cek status.`);
+  }
   try {
-    const response = await createThreadsSchedule(plan, { scheduleAt });
-    const externalId = extractReplizScheduleId(response);
-    if (!externalId) throw new Error('Repliz tidak mengembalikan schedule id.');
-    await pool.query(
-      `UPDATE pemasaran SET status = 'scheduled', repliz_status = 'pending', external_status = 'pending', repliz_schedule_id = $2, external_post_id = $2, repliz_scheduled_at = $3, repliz_synced_at = now(), repliz_last_error = null, last_error = null WHERE id = $1`,
-      [id, externalId, scheduleAt]
-    );
-    return ctx.reply(`✅ Konten #${id} dikirim ke Repliz${postNow ? ' untuk post segera' : ''}.\nSchedule ID: ${externalId}`);
+    const result = postNow
+      ? await schedulePlanToReplizNow(id, pool, { force })
+      : await schedulePlanToRepliz(id, pool, { force });
+    const scheduleId = result.plan.repliz_schedule_id;
+    return ctx.reply(`✅ Konten #${id} dikirim ke Repliz${postNow ? ' untuk post segera' : ''}.\nSchedule ID: ${scheduleId}`);
   } catch (err) {
-    await pool.query("UPDATE pemasaran SET status = 'failed', repliz_status = 'error', external_status = 'error', repliz_last_error = $2, last_error = $2 WHERE id = $1", [id, err.message.slice(0, 1000)]);
     return ctx.reply(`❌ Repliz gagal: ${err.message.slice(0, 500)}`);
   }
 }
@@ -1311,7 +1156,7 @@ bot.command('cekpost', async (ctx) => {
   const id = ctx.message.text.trim().split(/\s+/)[1];
   if (!/^\d+$/.test(String(id || ''))) return ctx.reply('Format: /cekpost ID');
   try {
-    const result = await syncReplizPlanStatus(id);
+    const result = await syncPlanReplizStatus(id, pool);
     return ctx.reply(`📡 Status Repliz #${id}\n\nSchedule ID: ${result.plan.repliz_schedule_id}\nStatus Repliz: ${result.plan.repliz_status}\nStatus lokal: ${result.plan.status}`);
   } catch (err) {
     return ctx.reply(`❌ Gagal cek status: ${err.message.slice(0, 500)}`);
