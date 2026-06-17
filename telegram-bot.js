@@ -8,6 +8,9 @@ import { validateBotEnvironment } from './lib/env.js';
 import { sanitizeImageUrl } from './lib/mediaUrl.js';
 import { pool, agentSessions, agentSessionLastUsed, agentSessionPromises, touchAgentSession, initAgent } from './lib/agent.js';
 import { createThreadsSchedule, getReplizSchedule, isReplizConfigured } from './lib/repliz.js';
+import { normalizeAiMessage, AiMessageError } from './lib/aiLimits.js';
+import { createRateLimiter } from './lib/rateLimit.js';
+import { assertValidImageBuffer, detectImageType, extForImageType } from './lib/imageFile.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -24,6 +27,12 @@ if (!BOT_TOKEN) {
 const bot = new Telegraf(BOT_TOKEN, {
   // AI responses/planning can take longer than Telegraf's default 90s timeout.
   handlerTimeout: Number(process.env.TELEGRAM_HANDLER_TIMEOUT_MS) || 10 * 60 * 1000,
+});
+
+const telegramAiRateLimiter = createRateLimiter({
+  limit: Number(process.env.TELEGRAM_AI_RATE_LIMIT) || 10,
+  windowMs: Number(process.env.TELEGRAM_AI_RATE_WINDOW_MS) || 60000,
+  keyFn: (chatId) => `telegram:${chatId}`,
 });
 
 // ---------- Telegram access control ----------
@@ -367,6 +376,20 @@ bot.on('text', async (ctx, next) => {
   if (isAddProductIntent(message)) {
     await startProductWizard(ctx);
     return;
+  }
+
+  const rateKey = `telegram:${chatId}`;
+  const rate = telegramAiRateLimiter.check(rateKey);
+  if (!rate.allowed) {
+    return ctx.reply(`⏳ Terlalu banyak request AI. Coba lagi dalam ${rate.retryAfterSec} detik.`);
+  }
+  telegramAiRateLimiter.consume(rateKey);
+
+  try {
+    message = normalizeAiMessage(message);
+  } catch (e) {
+    if (e instanceof AiMessageError) return ctx.reply(`⚠️ ${e.message}`);
+    throw e;
   }
 
   // Kirim typing indicator
@@ -830,11 +853,12 @@ async function uploadBufferToCloudinary(buffer, folder = 'socai') {
 async function downloadTelegramPhoto(fileId, options = {}) {
   try {
     const link = await bot.telegram.getFileLink(fileId);
-    const ext = path.extname(link.pathname) || '.jpg';
 
     const resp = await fetch(link.href);
     if (!resp.ok) throw new Error('Gagal download gambar: ' + resp.status);
     const buffer = Buffer.from(await resp.arrayBuffer());
+    assertValidImageBuffer(buffer);
+    const ext = extForImageType(detectImageType(buffer));
 
     if (options.cloudinary) {
       const cloudUrl = await uploadBufferToCloudinary(buffer, options.folder || 'socai');

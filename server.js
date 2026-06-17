@@ -6,11 +6,15 @@ import bcrypt from 'bcryptjs';
 import multer from 'multer';
 import helmet from 'helmet';
 import path from 'path';
+import fs from 'fs';
 import { fileURLToPath } from 'url';
 import { validateWebEnvironment } from './lib/env.js';
 import { sanitizeImageUrl } from './lib/mediaUrl.js';
-import { pool, agentSessions, agentSessionLastUsed, agentSessionPromises, touchAgentSession, initAgent } from './lib/agent.js';
+import { pool, agentSessions, agentSessionLastUsed, agentSessionPromises, touchAgentSession, initAgent, closeAgentPools } from './lib/agent.js';
 import { createThreadsSchedule, getReplizSchedule, getThreadsAccounts, isReplizConfigured } from './lib/repliz.js';
+import { createRateLimiter } from './lib/rateLimit.js';
+import { normalizeAiMessage, AiMessageError } from './lib/aiLimits.js';
+import { assertValidImageBuffer, detectImageType, extForImageType } from './lib/imageFile.js';
 
 
 const __filename = fileURLToPath(import.meta.url);
@@ -62,6 +66,16 @@ const replizSyncIntervalMs = Number(process.env.REPLIZ_SYNC_INTERVAL_MS || 5 * 6
 const replizAutoScheduleIntervalMs = Number(process.env.REPLIZ_AUTO_SCHEDULE_INTERVAL_MS || 10 * 60 * 1000);
 const replizAutoScheduleLimit = Number(process.env.REPLIZ_AUTO_SCHEDULE_LIMIT || 3);
 const replizAutoScheduleLeadMs = Number(process.env.REPLIZ_AUTO_SCHEDULE_LEAD_MS || 15 * 60 * 1000);
+
+const intervalHandles = [];
+function trackInterval(fn, ms) {
+  const id = setInterval(fn, ms);
+  intervalHandles.push(id);
+  return id;
+}
+
+let httpServer;
+let shuttingDown = false;
 
 app.disable('x-powered-by');
 app.set('trust proxy', true);
@@ -180,7 +194,7 @@ function cleanupLoginAttempts() {
     }
   }
 }
-setInterval(cleanupLoginAttempts, 5 * 60 * 1000);
+trackInterval(cleanupLoginAttempts, 5 * 60 * 1000);
 
 const loginRateLimiter = {
   increment(ip) {
@@ -223,39 +237,11 @@ const loginRateLimiter = {
 app.post('/login', loginRateLimiter.middleware);
 
 // Rate limiting for AI chat
-const chatAttempts = new Map();
-const CHAT_RATE_LIMIT = 10; // max requests
-const CHAT_RATE_WINDOW = 60 * 1000; // 1 minute
-
-function cleanupChatAttempts() {
-  const now = Date.now();
-  for (const [key, data] of chatAttempts) {
-    if (now - data.firstAttempt > CHAT_RATE_WINDOW) {
-      chatAttempts.delete(key);
-    }
-  }
-}
-setInterval(cleanupChatAttempts, 60 * 1000);
-
-function chatRateLimiter(req, res, next) {
-  const key = req.sessionID || String(req.session?.user?.id || req.ip);
-  const now = Date.now();
-  const existing = chatAttempts.get(key);
-
-  if (!existing || now - existing.firstAttempt > CHAT_RATE_WINDOW) {
-    chatAttempts.set(key, { count: 1, firstAttempt: now });
-    return next();
-  }
-
-  if (existing.count >= CHAT_RATE_LIMIT) {
-    const retryAfter = Math.ceil((CHAT_RATE_WINDOW - (now - existing.firstAttempt)) / 1000);
-    res.set('Retry-After', String(retryAfter));
-    return res.status(429).json({ error: `Terlalu banyak request AI. Coba lagi dalam ${retryAfter} detik.` });
-  }
-
-  existing.count++;
-  next();
-}
+const chatRateLimiter = createRateLimiter({
+  limit: Number(process.env.WEB_AI_RATE_LIMIT) || 10,
+  windowMs: Number(process.env.WEB_AI_RATE_WINDOW_MS) || 60000,
+  keyFn: (req) => req.sessionID || String(req.session?.user?.id || req.ip),
+}).middleware;
 
 
 
@@ -336,7 +322,24 @@ app.post('/api/upload', requireLogin, upload.single('gambar'), (req, res) => {
   if (!req.file) {
     return res.status(400).json({ error: 'File tidak valid. Gunakan JPG, PNG, GIF, atau WebP (max 5MB).' });
   }
-  res.json({ filename: req.file.filename, url: '/uploads/' + req.file.filename });
+  try {
+    const head = fs.readFileSync(req.file.path).subarray(0, 16);
+    assertValidImageBuffer(head);
+    const detected = detectImageType(head);
+    const correctExt = extForImageType(detected);
+    const currentExt = path.extname(req.file.filename).toLowerCase();
+    if (correctExt && currentExt !== correctExt) {
+      const newFilename = req.file.filename.replace(/\.[^.]+$/, '') + correctExt;
+      const newPath = path.join(path.dirname(req.file.path), newFilename);
+      fs.renameSync(req.file.path, newPath);
+      req.file.filename = newFilename;
+      req.file.path = newPath;
+    }
+    res.json({ filename: req.file.filename, url: '/uploads/' + req.file.filename });
+  } catch {
+    try { fs.unlinkSync(req.file.path); } catch {}
+    return res.status(400).json({ error: 'File bukan gambar valid' });
+  }
 });
 
 // ---------- API Produk (CRUD) ----------
@@ -939,8 +942,13 @@ app.get('/asisten', requireLogin, (req, res) => {
 
 // ---------- Chat API (SSE streaming) ----------
 app.post('/api/asisten', requireLogin, chatRateLimiter, async (req, res) => {
-  const { message } = req.body;
-  if (!message) return res.status(400).json({ error: 'Pesan tidak boleh kosong' });
+  let message;
+  try {
+    message = normalizeAiMessage(req.body?.message);
+  } catch (e) {
+    if (e instanceof AiMessageError) return res.status(400).json({ error: e.message });
+    throw e;
+  }
 
   const sessionKey = req.sessionID || String(req.session.user.id);
   let agentSession = agentSessions.get(sessionKey);
@@ -1062,10 +1070,59 @@ app.use((req, res) => {
   res.status(404).json({ error: 'Not found' });
 });
 
+function shutdown(signal) {
+  if (shuttingDown) return;
+  shuttingDown = true;
+  console.log(`[Server] ${signal} received, shutting down gracefully...`);
+
+  for (const id of intervalHandles) {
+    clearInterval(id);
+  }
+
+  for (const [sessionKey, session] of agentSessions) {
+    if (!sessionKey.startsWith('telegram:')) {
+      session.abort().catch(() => {});
+      agentSessions.delete(sessionKey);
+      agentSessionLastUsed.delete(sessionKey);
+      agentSessionPromises.delete(sessionKey);
+    }
+  }
+
+  const forceExit = setTimeout(() => {
+    console.error('[Server] Force exit after timeout');
+    process.exit(1);
+  }, 10_000);
+  forceExit.unref?.();
+
+  const finishShutdown = () => {
+    closeAgentPools()
+      .then(() => {
+        console.log('[Server] Shutdown complete');
+        process.exit(0);
+      })
+      .catch((err) => {
+        console.error('[Server] closeAgentPools error:', err.message);
+        process.exit(1);
+      });
+  };
+
+  if (!httpServer) {
+    finishShutdown();
+    return;
+  }
+
+  httpServer.close(() => {
+    finishShutdown();
+  });
+}
+
+process.once('SIGINT', () => shutdown('SIGINT'));
+process.once('SIGTERM', () => shutdown('SIGTERM'));
+
 // ---------- Start server ----------
 initPemasaranReplizSchema()
   .then(() => {
-    app.listen(port, '127.0.0.1', () => {
+    httpServer = app.listen(port, '127.0.0.1', () => {
       console.log(`socai.my.id listening on http://127.0.0.1:${port}`);
     });
     if (Number.isFinite(replizAutoScheduleIntervalMs) && replizAutoScheduleIntervalMs > 0) {
@@ -1085,14 +1142,14 @@ initPemasaranReplizSchema()
         }
       };
       setTimeout(runAutoSchedule, 30_000);
-      setInterval(runAutoSchedule, replizAutoScheduleIntervalMs);
+      trackInterval(runAutoSchedule, replizAutoScheduleIntervalMs);
       console.log(`[Repliz] Auto schedule enabled every ${Math.round(replizAutoScheduleIntervalMs / 1000)}s, limit=${replizAutoScheduleLimit}, lead=${Math.round(replizAutoScheduleLeadMs / 60000)}m`);
     } else {
       console.log('[Repliz] Auto schedule disabled (REPLIZ_AUTO_SCHEDULE_INTERVAL_MS <= 0)');
     }
 
     if (Number.isFinite(replizSyncIntervalMs) && replizSyncIntervalMs > 0) {
-      setInterval(() => {
+      trackInterval(() => {
         syncPendingReplizStatuses().catch((err) => console.error('[Repliz] Auto sync error:', err.message));
       }, replizSyncIntervalMs);
       console.log(`[Repliz] Auto sync enabled every ${Math.round(replizSyncIntervalMs / 1000)}s`);
