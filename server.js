@@ -9,6 +9,13 @@ import {
   replizAutoScheduleLimit,
   replizAutoScheduleLeadMs,
 } from './lib/web/replizJobs.js';
+import {
+  generateWeeklyPlans,
+  runAgentRunsPurge,
+  runPublishFeedbackRefresh,
+  autoPlanCronIntervalMs,
+  agentRunsPurgeIntervalMs,
+} from './lib/autonomousJobs.js';
 
 validateWebEnvironment();
 
@@ -134,6 +141,45 @@ Promise.all([initPemasaranReplizSchema(), initAgentRunsSchema(pool)])
       console.log(`[Repliz] Auto sync enabled every ${Math.round(replizSyncIntervalMs / 1000)}s`);
     } else {
       console.log('[Repliz] Auto sync disabled (REPLIZ_SYNC_INTERVAL_MS <= 0)');
+    }
+
+    runPublishFeedbackRefresh().catch((err) => {
+      console.error('[PublishFeedback] Initial refresh error:', err.message);
+    });
+
+    if (Number.isFinite(autoPlanCronIntervalMs) && autoPlanCronIntervalMs > 0) {
+      let autoPlanRunning = false;
+      const runAutoPlan = async () => {
+        if (autoPlanRunning) return;
+        autoPlanRunning = true;
+        try {
+          const result = await generateWeeklyPlans();
+          if (!result.skipped) {
+            console.log(`[AutoPlan] Cron done: gaps=${result.gapCount}, textLen=${result.textLength || 0}`);
+          }
+        } catch (err) {
+          console.error('[AutoPlan] Cron error:', err.message);
+        } finally {
+          autoPlanRunning = false;
+        }
+      };
+      setTimeout(runAutoPlan, 60_000);
+      trackInterval(runAutoPlan, autoPlanCronIntervalMs);
+      console.log(`[AutoPlan] Weekly plan cron enabled every ${Math.round(autoPlanCronIntervalMs / 1000)}s`);
+    } else {
+      console.log('[AutoPlan] Weekly plan cron disabled (AUTO_PLAN_CRON_INTERVAL_MS <= 0)');
+    }
+
+    if (Number.isFinite(agentRunsPurgeIntervalMs) && agentRunsPurgeIntervalMs > 0) {
+      const runPurge = async () => {
+        const result = await runAgentRunsPurge();
+        if (result.deleted > 0) {
+          console.log(`[AgentRuns] Purge cycle removed ${result.deleted} rows`);
+        }
+      };
+      setTimeout(runPurge, 120_000);
+      trackInterval(runPurge, agentRunsPurgeIntervalMs);
+      console.log(`[AgentRuns] Purge enabled every ${Math.round(agentRunsPurgeIntervalMs / 1000)}s`);
     }
   })
   .catch((err) => {

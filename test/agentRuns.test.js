@@ -9,6 +9,7 @@ import {
   completeAgentRun,
   getAgentRunMetrics,
   listAgentRuns,
+  purgeOldAgentRuns,
 } from '../lib/agentRuns.js';
 
 function createMockPool() {
@@ -112,6 +113,12 @@ function createMockPool() {
         rows.sort((a, b) => String(b.started_at).localeCompare(String(a.started_at)));
         const safeLimit = params[0];
         return { rows: rows.slice(0, safeLimit) };
+      }
+
+      if (text.includes('DELETE FROM agent_runs')) {
+        const before = state.runs.length;
+        state.runs = [];
+        return { rowCount: before };
       }
 
       throw new Error(`Unhandled mock query: ${text.slice(0, 120)}`);
@@ -245,5 +252,13 @@ describe('agentRuns lifecycle', () => {
     const metrics = await getAgentRunMetrics(pool);
     assert.equal(metrics.M1_planning_success_rate, 1);
     assert.equal(metrics.totals.total_runs, 1);
+  });
+
+  it('purgeOldAgentRuns deletes aged rows', async () => {
+    const pool = createMockPool();
+    await createAgentRun(pool, { session_key: 'web:purge', source: 'web' });
+    const deleted = await purgeOldAgentRuns(pool, { retainDays: 90 });
+    assert.equal(deleted, 1);
+    assert.equal(pool.state.runs.length, 0);
   });
 });

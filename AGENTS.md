@@ -51,7 +51,12 @@ Copy `.env.example` → `.env` before running. Web validates env on startup via 
 | `BRAVE_API_KEY` | Enables AI `web_search` tool |
 | `AUTONOMY_MODE` | Global bounded autonomy: `assistive` (default), `supervised`, `bounded` |
 | `WEB_AUTONOMY_MODE`, `TELEGRAM_AUTONOMY_MODE` | Per-channel override of `AUTONOMY_MODE` |
-| `REQUIRE_APPROVAL` | If `true`, blocks agent `schedule_content` (P2 approve hook) |
+| `REQUIRE_APPROVAL` | If `true`, blocks agent `schedule_content`; sends Telegram approve/reject inline keyboard |
+| `AUTO_PLAN_CRON_INTERVAL_MS` | Weekly plan cron interval (`0` = disabled) |
+| `AUTO_PLAN_MIN_GAPS` | Min calendar gaps before cron triggers agent (default `3`) |
+| `AUTO_PLAN_CRON_AUTONOMY_MODE` | Autonomy mode for cron agent (default `supervised`) |
+| `AGENT_RUNS_PURGE_INTERVAL_MS` | Interval to purge old `agent_runs` rows (default `86400000`) |
+| `TELEGRAM_APPROVAL_NOTIFY_ROLES` | Min role for approval notifications (default `operator`) |
 | `MAX_AGENT_SAVES_PER_RUN` | Cap plans saved per agent response (default `7`) |
 | `MAX_AGENT_SCHEDULES_PER_DAY` | Daily cap for agent-driven Repliz schedules (default `10`) |
 | `AGENT_RUNS_RETAIN_DAYS` | Retention hint for `agent_runs` log purge (P2, default `90`) |
@@ -75,6 +80,12 @@ Copy `.env.example` → `.env` before running. Web validates env on startup via 
 | `lib/csrfToken.js` | `generateCsrfToken`, `ensureSessionCsrfToken`, `validateCsrfToken` — session CSRF for logout + page forms |
 | `lib/telegramAccess.js` | `createTelegramAccess()` — role-based ACL (`super_admin` > `operator` > `viewer`), migrates legacy `allowed_user_ids[]` |
 | `lib/health.js` | `collectHealthStatus()` — DB ping + optional config flags (`?detail=1`) |
+| `lib/agentRuns.js` | `agent_runs` audit log: create/log/complete runs, metrics, purge |
+| `lib/actuator/` | Bounded actuator tools + `AUTONOMY_MODE` policy |
+| `lib/agentRunner.js` | `runAgentTask()` — programmatic agent prompt (cron/chat) |
+| `lib/autonomousJobs.js` | Weekly plan cron, publish feedback refresh, agent_runs purge |
+| `lib/scheduleApproval.js` | `REQUIRE_APPROVAL` flow + Telegram approve/reject |
+| `lib/publishFeedback.js` | Publish outcome cache injected into agent system prompt |
 | `lib/web/` | Web app modules: `createApp.js` (Express factory), `middleware/` (auth, CSRF, CSP nonce, login rate limit, upload), `routes/` (pages + API), `views/` (HTML templates), `replizJobs.js` (background Repliz sync/schedule) |
 
 **Entry points:** `server.js` (thin bootstrap: env validation, schema init, `createWebApp()`, listen, shutdown), `telegram-bot.js` (access control via `lib/telegramAccess.js` + `telegram-users.json`, wizards, Repliz commands).

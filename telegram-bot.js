@@ -19,6 +19,7 @@ import { normalizeAiMessage, AiMessageError } from './lib/aiLimits.js';
 import { createRateLimiter } from './lib/rateLimit.js';
 import { assertValidImageBuffer, detectImageType, extForImageType } from './lib/imageFile.js';
 import { createTelegramAccess } from './lib/telegramAccess.js';
+import { approvePlanSchedule, rejectPlanSchedule } from './lib/scheduleApproval.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -1169,6 +1170,37 @@ bot.action('save_plan', async (ctx) => {
     pendingPlans.delete(chatId);
   } catch (err) {
     await ctx.reply(`❌ Gagal menyimpan: ${err.message.slice(0, 500)}`);
+  }
+});
+
+bot.action(/^approve_schedule:(\d+)$/, async (ctx) => {
+  if (!requireTelegramRole(ctx, 'operator')) return;
+  const id = ctx.match[1];
+  await ctx.answerCbQuery('⏳ Menjadwalkan...');
+  try {
+    await ctx.editMessageReplyMarkup({ inline_keyboard: [] });
+  } catch (_) {}
+  try {
+    const result = await approvePlanSchedule(pool, id);
+    const status = result?.plan?.repliz_status || result?.repliz_status || 'scheduled';
+    await ctx.reply(`✅ Rencana #${id} dijadwalkan ke Repliz.\nStatus: ${status}`);
+  } catch (err) {
+    await ctx.reply(`❌ Gagal menjadwalkan #${id}: ${err.message.slice(0, 500)}`);
+  }
+});
+
+bot.action(/^reject_schedule:(\d+)$/, async (ctx) => {
+  if (!requireTelegramRole(ctx, 'operator')) return;
+  const id = ctx.match[1];
+  await ctx.answerCbQuery('Dibatalkan');
+  try {
+    await ctx.editMessageReplyMarkup({ inline_keyboard: [] });
+  } catch (_) {}
+  try {
+    await rejectPlanSchedule(pool, id);
+    await ctx.reply(`❌ Rencana #${id} dibatalkan (status: cancelled).`);
+  } catch (err) {
+    await ctx.reply(`❌ Gagal membatalkan #${id}: ${err.message.slice(0, 500)}`);
   }
 });
 

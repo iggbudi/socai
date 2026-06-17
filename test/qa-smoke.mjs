@@ -52,6 +52,11 @@ const actuatorFiles = [
   'lib/actuator/contentPlan.js',
   'lib/actuator/schedule.js',
   'lib/agentRuns.js',
+  'lib/agentRunner.js',
+  'lib/autonomousJobs.js',
+  'lib/scheduleApproval.js',
+  'lib/publishFeedback.js',
+  'lib/telegramNotify.js',
 ];
 for (const rel of actuatorFiles) {
   check(`actuator file exists: ${rel}`, () => {
@@ -139,8 +144,10 @@ try {
     assert.equal(healthDetail.status, 200);
     assert.ok('autonomy_mode' in healthDetailJson.checks);
     assert.ok('agent_runs_ready' in healthDetailJson.checks);
+    assert.ok('autonomous_jobs' in healthDetailJson.checks);
     assert.equal(typeof healthDetailJson.checks.autonomy_mode, 'string');
     assert.equal(typeof healthDetailJson.checks.agent_runs_ready, 'boolean');
+    assert.equal(typeof healthDetailJson.checks.autonomous_jobs.auto_plan_cron_interval_ms, 'number');
   });
 
   const loginGet = await fetch(`${base}/login`);
