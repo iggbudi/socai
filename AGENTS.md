@@ -80,7 +80,7 @@ Copy `.env.example` → `.env` before running. Web validates env on startup via 
 - **DB read-only pool** — AI `db_query` uses `aiReadPool` (dedicated `DB_AI_READ_*` creds recommended in production)
 - **AI `db_query` sandbox** — SELECT only, no multi-statement, keyword blocklist, single-table reads (`produk`/`pemasaran`), no JOIN, 1000-char & 50-row caps
 - **Graceful shutdown** — `server.js` handles `SIGINT`/`SIGTERM`: stops intervals, aborts web agent sessions, closes HTTP server, `closeAgentPools()`
-- **Helmet + CSP** — enabled with per-request nonce (`lib/web/middleware/csp.js`); inline `<script>`/`<style>` in views use `nonce` attribute; no `style-src 'unsafe-inline'` (styles via CSS classes)
+- **Helmet + CSP** — enabled with per-request nonce (`lib/web/middleware/csp.js`); inline `<script>`/`<style>` in views use `nonce` attribute; no `style-src 'unsafe-inline'` (styles via CSS classes); `script-src-attr 'none'` — views must use `addEventListener` in nonce scripts (shared `HAMBURGER_BIND_JS` in `lib/web/views/pageInit.js`), never HTML `onclick`/`onchange` attributes
 - **Login rate limit** — 5 attempts / 15 min per IP
 - **Logout CSRF** — `POST /logout` with session `_csrf` token; `GET /logout` redirects to `/dashboard` (no session destroy)
 - **Telegram ACL** — roles via `lib/telegramAccess.js`: `super_admin` (full + user mgmt), `operator` (AI, wizards, Repliz), `viewer` (read-only commands); `/start`, `/help`, `/whoami` open to all
