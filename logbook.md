@@ -530,5 +530,5 @@ Fitur CRUD + upload gambar keluar dari web shell; `lib/web/middleware/` tinggal 
 ### Commit
 | Commit | Pesan |
 |--------|-------|
-| `(F4)` | `refactor(produk): move produk feature to lib/features/ (vertical slicing F4)` |
+| `6b803f6` | `refactor(produk): move produk feature to lib/features/ (vertical slicing F4)` |
 
