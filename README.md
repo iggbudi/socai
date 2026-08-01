@@ -632,7 +632,12 @@ psql -U postgres -d socai -f scripts/setup-ai-readonly.sql
 npm start          # Web — http://127.0.0.1:3010
 npm run bot        # Telegram bot
 npm run dev        # Keduanya (development)
-npm test           # Unit tests (32 tests)
+npm test           # Unit tests
+npm run test:ci    # Unit tests + QA smoke (CI gate)
+npm run test:coverage # Coverage dengan threshold CI
+npm run lint       # ESLint
+npm run format:check # Prettier check (CI gate)
+npm run format     # Prettier write
 node test/qa-smoke.mjs   # Smoke test CSP & HTTP
 ```
 

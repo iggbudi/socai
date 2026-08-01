@@ -26,9 +26,10 @@ npm run bot        # telegram bot (long-polling)
 npm run dev        # both in background (server.js & telegram-bot.js)
 npm test           # automated tests in test/
 npm run test:ci    # unit tests + qa-smoke (no HTTP; used by GitHub Actions)
-npm run test:coverage  # unit tests + coverage report (node --test --experimental-test-coverage)
+npm run test:coverage  # unit tests + gated coverage (lines 41 / funcs 58 / branches 68)
 npm run lint       # ESLint 9 (flat config, `eslint.config.js`) — dijalankan di CI
-npm run format     # Prettier write (opsional; bukan gate CI)
+npm run format     # Prettier write (ubah file)
+npm run format:check # Prettier read-only check — gate CI
 npm run eval:export  # export metrik penelitian M1–M7 (JSON)
 ```
 
@@ -115,6 +116,8 @@ Copy `.env.example` → `.env` before running. Web validates env on startup via 
 **Entry points:** `server.js` (thin bootstrap: env validation, schema init, `createWebApp()`, listen, shutdown), `telegram-bot.js` (thin entry → `lib/features/telegram/bot.js`: access control via `access.js` + `telegram-users.json`, wizards, Repliz commands).
 
 **Route testability convention (S21):** feature route registration yang memakai global pool/agent dependency wajib menyediakan optional `deps` dengan default production yang identik; handler SSE/API yang beralur kompleks diekspor sebagai fungsi bernama agar dapat diuji memakai fake pool/session tanpa database, model, atau jaringan.
+
+**Coverage gate convention (S22):** ambang coverage di `package.json` hanya boleh dinaikkan, tidak boleh diturunkan. Penurunan ambang wajib memiliki alasan tertulis di `logbook.md`; baseline gate saat ini adalah **41% lines / 58% functions / 68% branches** setelah Prettier baseline.
 
 ## Security (P0+P1 summary)
 

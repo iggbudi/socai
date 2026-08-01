@@ -827,3 +827,36 @@ Menguji route AI SSE dan endpoint agent runs tanpa database, model AI, Telegram,
 
 ### Commit
 `test(agent): inject deps into asisten/runs routes + SSE route tests (R1b)`
+
+---
+
+## Sprint 22 — Gate Kualitas di CI (R2) (2 Agustus 2026, lanjutan)
+
+### Tujuan
+
+Menetapkan formatting deterministik dan gerbang coverage minimum agar regresi kualitas terdeteksi oleh CI.
+
+### Perubahan
+
+- **Prettier baseline**: tambah `.prettierrc` (`printWidth: 110`, single quote, trailing comma, dan arrow parens) serta `.prettierignore`; seluruh file yang tidak dikecualikan diformat dalam commit baseline terpisah.
+- **Script package**: tambah `npm run format:check`; `npm run test:coverage` kini memakai threshold native Node untuk lines/functions/branches.
+- **CI**: workflow menjalankan empat gate berurutan: `test:ci`, `lint`, `format:check`, dan `test:coverage`.
+- **Policy**: threshold coverage hanya boleh dinaikkan; penurunan wajib disertai alasan di logbook.
+- **Dokumentasi**: kebijakan dan command diperbarui di `AGENTS.md`, `README.md`, `CODEBASE_WIKI.md`, dan `sprint-plan-rekomendasi.md`.
+
+### Verifikasi
+
+- `npm run format:check` → **lulus**, seluruh file menggunakan style Prettier.
+- `npm run test:coverage` → **129/129 pass**, coverage agregat **41,88% line / 72,42% branch / 58,27% funcs**, gate **41/58/68** lulus.
+- Negative check: threshold line sementara dinaikkan ke **95%** → exit **1** dengan laporan **41,88%**, lalu `package.json` dipulihkan ke threshold **41%**.
+- `npm run test:ci` → **129/129 pass + QA PASSED**.
+- `npm run lint` → **0 error, 0 warning**.
+
+Threshold line rencana awal 45% disesuaikan menjadi 41% karena hasil baseline setelah formatting terukur 41,88%; keputusan ini dicatat eksplisit agar tidak menjadi penurunan diam-diam dan hanya dapat dinaikkan pada sprint berikutnya.
+
+### Commit
+
+| Commit | Pesan |
+|--------|-------|
+| `e944b51` | `style: apply prettier baseline` |
+| `(this commit)` | `ci: add format check + coverage thresholds (R2)` |

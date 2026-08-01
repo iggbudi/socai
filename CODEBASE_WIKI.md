@@ -36,6 +36,9 @@ npm run bot               # bot Telegram long-polling
 npm run dev               # web + bot di background
 npm test                  # unit tests
 npm run test:ci           # unit + qa-smoke tanpa HTTP
+npm run test:coverage     # coverage dengan threshold CI
+npm run lint              # ESLint
+npm run format:check     # Prettier check (CI gate)
 npm run eval:export       # export metrik penelitian M1–M7 JSON
 ```
 
@@ -362,3 +365,4 @@ Rencana & status: `sprint-plan.md` · catatan sesi: `logbook.md` (Sesi 1 Agustus
 | S19 | `chore: remove stale root debug scripts (R5)` | Hapus probe debug root `test-agent.js`/`test-bot.js`; pindahkan materi prompt marketing ke `docs/`; verifikasi referensi dan `.gitignore` |
 | S20 | `test(agent): cover approval gate paths, add notify/schedule seams (R1a)` | Tambah seam injeksi notifier/scheduler; uji approval bounded, pencegahan double-post, validasi status/ID, dan rejection path; `approval.js` 100% line/func |
 | S21 | `test(agent): inject deps into asisten/runs routes + SSE route tests (R1b)` | Tambah DI route agent + `handleAsistenChat`; 11 test SSE/rate-limit/agent-runs dengan fake pool/session; `agent/routes.js` 95,35% line / 91,67% funcs |
+| S22 | `style: apply prettier baseline` + `ci: add format check + coverage thresholds (R2)` | Prettier deterministik, `format:check`, coverage thresholds 41/58/68, dan CI menjadi 4 gate |

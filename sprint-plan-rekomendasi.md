@@ -209,27 +209,28 @@ staging/produksi setelah deploy (owner), sebelum lanjut S22.
 Belum ada `.prettierrc` → format bergantung default Prettier, rawan diff besar saat pertama dijalankan.
 
 **Tasks (config)**
-- [ ] Buat `.prettierrc` eksplisit agar deterministik lintas mesin:
+- [x] Buat `.prettierrc` eksplisit agar deterministik lintas mesin:
       `{ "printWidth": 110, "singleQuote": true, "trailingComma": "all", "arrowParens": "always" }`
       — `printWidth` besar karena banyak template literal HTML di `view.js`.
-- [ ] Buat `.prettierignore`: `node_modules/`, `public/`, `backups/`, `.pi/`, `package-lock.json`, `*.md`
+- [x] Buat `.prettierignore`: `node_modules/`, `public/`, `backups/`, `.pi/`, `package-lock.json`, `*.md`
       (docs Indonesia panjang — jangan di-reflow otomatis).
-- [ ] **Jalankan `npm run format` sekali** dan commit hasilnya **sebagai commit terpisah**
+- [x] **Jalankan `npm run format` sekali** dan commit hasilnya **sebagai commit terpisah**
       (`style: apply prettier baseline`) agar diff fungsional sprint ini tetap terbaca.
-- [ ] `package.json` → tambah `"format:check": "prettier --check ."`
-- [ ] `package.json` → ubah `test:coverage` menjadi bergate:
+- [x] `package.json` → tambah `"format:check": "prettier --check ."`
+- [x] `package.json` → ubah `test:coverage` menjadi bergate:
       ```
       node --test --experimental-test-coverage \
-        --test-coverage-lines=45 --test-coverage-functions=58 --test-coverage-branches=68 \
+        --test-coverage-lines=41 --test-coverage-functions=58 --test-coverage-branches=68 \
         "test/**/*.test.js" "lib/shared/**/*.test.js" "lib/features/**/*.test.js"
       ```
-      (flag native Node 24 — **tanpa dependensi baru**; ambang diset sedikit di bawah hasil S21
-      agar tidak flaky, lalu dinaikkan tiap sprint)
-- [ ] `.github/workflows/ci.yml` → tambah step setelah lint:
+      (flag native Node 24 — **tanpa dependensi baru**; S21 menghasilkan 42,40% sebelum format,
+      lalu baseline Prettier terukur 41,88%; line gate 41% dipilih agar CI tidak merah seketika.
+      Ambang hanya boleh naik setelah coverage meningkat.)
+- [x] `.github/workflows/ci.yml` → tambah step setelah lint:
       `- run: npm run format:check` dan `- run: npm run test:coverage`
 
 **Tasks (kebijakan)**
-- [ ] Catat di `AGENTS.md`: **ambang coverage hanya boleh naik, tidak boleh turun**; menurunkan ambang
+- [x] Catat di `AGENTS.md`: **ambang coverage hanya boleh naik, tidak boleh turun**; menurunkan ambang
       wajib disertai alasan di `logbook.md`.
 
 **Verifikasi**
@@ -248,6 +249,8 @@ Verifikasi negatif (wajib, buktikan gate benar-benar menggigit):
 **Commit**: 2 commit — `style: apply prettier baseline` lalu `ci: add format check + coverage thresholds (R2)`
 
 **DoD**: CI menjalankan 4 gate (test:ci, lint, format:check, coverage); gate terbukti merah saat ambang dinaikkan; CI hijau di ambang final.
+
+**Hasil aktual (2 Agustus 2026)**: baseline formatting commit `e944b51`; formatted coverage **41,88% line / 72,42% branch / 58,27% funcs**; gate final **41/68/58**; verifikasi negatif line threshold 95% menghasilkan exit 1 sebelum dikembalikan.
 
 **Risiko**: commit baseline Prettier menyentuh puluhan file → menyulitkan `git blame`.
 **Mitigasi**: commit terpisah + catat hash-nya di `logbook.md`; tim dapat memakai `git blame --ignore-rev`.
