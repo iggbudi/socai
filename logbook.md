@@ -555,3 +555,36 @@ Domain inti bisnis (Repliz scheduling) + background jobs keluar dari web shell &
 |--------|-------|
 | `5c2e04f` | `refactor(pemasaran): move pemasaran feature to lib/features/ (vertical slicing F5)` |
 
+---
+
+## Vertical Slicing — Fase 6: Fitur `agent` (1 Agustus 2026, lanjutan)
+
+### Tujuan
+Fitur terbesar dipindah + `lib/agent.js` (539 baris) dipecah; web shell tersisa route kecil (channels, repliz).
+
+### Perubahan (kode) — F6a: modul mandiri
+- **`lib/features/agent/`**: `runs.js` (dari `lib/agentRuns.js`), `aiLimits.js`, `runner.js` (dari `lib/agentRunner.js`), `actuator/` (5 file dari `lib/actuator/`), `publishFeedback.js`, `approval.js` (dari `lib/scheduleApproval.js`), `autonomousJobs.js` + `autonomousConfig.js`.
+- **6 test co-located**: agentRuns, actuator, scheduleApproval, autonomousJobs, envAutonomy, aiLimits → `lib/features/agent/test/`.
+- **Importer diupdate**: `lib/agent.js`, `lib/health.js`, `telegram-bot.js`, `server.js`, `routes/api/{asisten,agentRuns}.js`, `lib/features/pemasaran/jobs.js`, `qa-smoke.mjs`, `lib/shared/test/wibTime.test.js`.
+
+### Perubahan (kode) — F6b: pecah `lib/agent.js` + modul web
+- **`core.js`** (dari `lib/agent.js` — session map, `initAgent`, tools `db_query`/`web_search`/actuator; import internal `'./actuator/'`, `'./runs.js'`, `'./publishFeedback.js'`, `'./approval.js'`, `'../channels/index.js'`, `'../../shared/db.js'`).
+- **`routes.js`** = `registerAsistenRoutes` (SSE chat, dari `routes/api/asisten.js`) + `registerAgentRunsRoutes` (`/api/agent/runs` + `/api/agent/metrics`, dari `routes/api/agentRuns.js`) — digabung, pola `auth/routes.js`.
+- **`view.js`** (dari `views/asisten.js`); **`index.js`** public API (core + runner + runs + routes + view + aiLimits).
+- **Importer diupdate**: `server.js`, `telegram-bot.js`, `test-agent.js`, `lib/features/auth/routes.js`, `createApp.js` (2 import → 1), `pages.js`, `qa-smoke.mjs` (import + VIEW_SOURCES + actuatorFiles list).
+- `lib/` root kini tanpa `agent*.js`; `lib/web/routes/api/` tersisa `channels.js` + `repliz.js`; `lib/web/views/` tersisa `evaluasi.js`.
+
+### Kendala & pelajaran
+- **Level path actuator 3× lagi**: `lib/features/agent/actuator/` (depth 4) butuh `'../../../shared/...'` (bukan `'../../'`) dan `'../../pemasaran/...'`/`'../../channels/...'` (bukan `'../'`). Dua iterasi perbaikan (pemasaran/channels lalu wibTime) — semuanya tertangkap test.
+- **Dynamic import tidak match pattern `from '`**: `runs.js:226` `import('./evaluationMetrics.js')` dan `autonomousJobs.js` `import('./shared/db.js')` perlu pattern `import('...')` terpisah; escape `(`/`)` di sed BRE: tulis literal tanpa backslash (jangan `\(` — itu grup BRE).
+- **qa-smoke `actuatorFiles` + VIEW_SOURCES** berisi 10 path lama → semua diupdate ke `lib/features/agent/...`.
+- **Edit tree docs menghapus baris `channels/`** secara tidak sengaja (old_text terlalu panjang) → diverifikasi `sed -n` & dikembalikan.
+
+### Verifikasi
+- `npm run test:ci` → **103/103 + QA PASSED** (setelah 3 iterasi perbaikan path).
+
+### Commit
+| Commit | Pesan |
+|--------|-------|
+| `(F6)` | `refactor(agent): move agent feature to lib/features/ (vertical slicing F6)` |
+

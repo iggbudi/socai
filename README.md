@@ -17,7 +17,7 @@ Aplikasi menggabungkan **web dashboard**, **bot Telegram**, **AI agent berbasis 
 - **Manajemen produk** — CRUD produk, upload gambar (magic-byte validation)
 - **Perencanaan pemasaran** — rencana konten Threads, kalender, status
 - **Asisten AI** — chat SSE di web & Telegram; tools `db_query` (read-only), `web_search`, dan actuator terkontrol (`save_content_plan`, `schedule_content`, …)
-- **Bounded autonomy (P1)** — `AUTONOMY_MODE`, actuator `lib/actuator/`, audit log `agent_runs`
+- **Bounded autonomy (P1)** — `AUTONOMY_MODE`, actuator `lib/features/agent/actuator/`, audit log `agent_runs`
 - **Otomasi Repliz** — jadwalkan, post now, retry, sync status, auto-schedule background
 - **Bot Telegram** — wizard konten/produk, role-based ACL (`super_admin` / `operator` / `viewer`)
 - **Keamanan** — CSRF, CSP nonce, rate limit, Helmet, DB read-only untuk AI
@@ -138,9 +138,9 @@ flowchart TB
     end
 
     subgraph Agent["Lapisan AI Agent"]
-        AG["lib/agent.js"]
-        ACT["lib/actuator/\npolicy + wrappers"]
-        AR["lib/agentRuns.js"]
+        AG["lib/features/agent/core.js"]
+        ACT["lib/features/agent/actuator/\npolicy + wrappers"]
+        AR["lib/features/agent/runs.js"]
     end
 
     subgraph Data["Lapisan Data"]
@@ -171,7 +171,7 @@ flowchart TB
 | Prinsip | Implementasi |
 |---------|--------------|
 | **Bounded autonomy** | `db_query` SELECT-only; write via actuator + `AUTONOMY_MODE` (`assistive` / `supervised` / `bounded`) |
-| **Shared core** | `lib/shared/db.js` (pools), `lib/agent.js`, `lib/features/pemasaran/domain.js`, `lib/actuator/` dipakai web & bot |
+| **Shared core** | `lib/shared/db.js` (pools), `lib/features/agent/core.js`, `lib/features/pemasaran/domain.js`, `lib/features/agent/actuator/` dipakai web & bot |
 | **Defense in depth** | CSRF, CSP nonce, rate limit, role ACL, URL whitelist, policy caps |
 | **Observability** | Setiap agent run & tool call tercatat di `agent_runs` |
 | **Human-in-the-loop** | Default `assistive`; supervised/bounded untuk skenario penelitian |
@@ -274,7 +274,7 @@ sequenceDiagram
     actor User
     participant Browser
     participant Express as Express /api/asisten
-    participant Agent as lib/agent.js
+    participant Agent as lib/features/agent/core.js
     participant LLM as LLM Provider
     participant DB as PostgreSQL (read-only)
 

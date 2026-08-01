@@ -1,5 +1,5 @@
 import 'dotenv/config';
-import { initAgent, agentSessions } from './lib/agent.js';
+import { initAgent, agentSessions } from './lib/features/agent/core.js';
 
 async function main() {
   console.log('Testing initAgent...');

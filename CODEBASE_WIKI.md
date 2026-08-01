@@ -71,21 +71,13 @@ Catatan:
 │   │   ├── html.js                    # escapeHtml
 │   │   ├── telegramNotify.js          # Notifikasi Telegram
 │   │   └── test/                      # Co-located tests (wibTime, mediaUrl)
-│   ├── agent.js                       # AI agent, tools, sessions
-│   ├── agentRunner.js                # Programmatic agent task runner
-│   ├── agentRuns.js                  # Audit log agent_runs
-│   ├── autonomousConfig.js           # Config autonomy mode
-│   ├── autonomousJobs.js             # Weekly plan cron, feedback, purge
 │   ├── evaluationMetrics.js          # Metrik M1–M7
-│   ├── scheduleApproval.js           # Approval flow Telegram
-│   ├── publishFeedback.js            # Cache outcome publikasi untuk prompt
-│   ├── telegramAccess.js             # ACL role bot
-│   ├── aiLimits.js                   # Batas panjang pesan AI
-│   ├── env.js                        # Validasi env web/bot
 │   ├── health.js                     # Health status collector
-│   ├── actuator/                     # Bounded write tools + policy
+│   ├── telegramAccess.js             # ACL role bot
+│   ├── env.js                        # Validasi env web/bot
 │   ├── features/
-│   │   ├── channels/                   # Adapter channel social media (F2): registry, threads, instagram, prompt + test/
+│   │   ├── agent/                    # Fitur AI agent (F6): core, runner, runs, aiLimits, actuator/, autonomousJobs, approval, publishFeedback, routes (asisten + agent runs/metrics), view + test/
+│   │   ├── channels/                 # Adapter channel social media (F2): registry, threads, instagram, prompt + test/
 │   │   ├── auth/                       # Login/logout, session CSRF, rate limit (F3) + test/
 │   │   ├── dashboard/                  # Dashboard page (F3)
 │   │   ├── produk/                     # CRUD produk + upload (F4): routes, upload, view
@@ -103,7 +95,7 @@ Catatan:
 flowchart TB
   WEB[Web Dashboard] --> EXPRESS[Express lib/web]
   TG[Telegram Bot] --> BOT[telegram-bot.js]
-  EXPRESS --> AGENT[lib/agent.js]
+  EXPRESS --> AGENT[lib/features/agent/core.js]
   BOT --> AGENT
   AGENT --> RO[(AI read-only pool)] --> PG[(PostgreSQL)]
   AGENT --> ACT[lib/actuator] --> PG
@@ -190,7 +182,7 @@ Semua mutasi `/api/*` wajib lolos CSRF.
 
 ## 7. AI Agent dan Bounded Autonomy
 
-PostgreSQL pools ada di `lib/shared/db.js` (vertical slicing F0): `pool`, `aiReadPool`, `closeAgentPools()`. `lib/agent.js` mengekspos `agentSessions`, `initAgent()`, dan context audit run aktif.
+PostgreSQL pools ada di `lib/shared/db.js` (vertical slicing F0): `pool`, `aiReadPool`, `closeAgentPools()`. `lib/features/agent/core.js` mengekspos `agentSessions`, `initAgent()`, dan context audit run aktif.
 
 Dependency: `@earendil-works/pi-coding-agent` **^0.83.0**. Sejak 0.83.0, API `AuthStorage`/`ModelRegistry` diganti `ModelRuntime`:
 `ModelRuntime.create({ allowModelNetwork: false })` (credentials dari `auth.json` + env `XIAOMI_API_KEY` dll), resolve model via `modelRuntime.getModel(provider, modelId)`, dan diteruskan ke `createAgentSession({ modelRuntime, ... })`.
@@ -206,7 +198,7 @@ Dependency: `@earendil-works/pi-coding-agent` **^0.83.0**. Sejak 0.83.0, API `Au
 
 Mode autonomy: `assistive` (default aman), `supervised` (human-in-loop), `bounded` (aksi dalam batas policy/cap). Config global `AUTONOMY_MODE`; override web/bot/cron tersedia.
 
-Audit: `lib/agentRuns.js` mencatat run/tool/plans/error/durasi; `lib/evaluationMetrics.js` menghitung M1–M7; export via `scripts/export-evaluation.mjs`.
+Audit: `lib/features/agent/runs.js` mencatat run/tool/plans/error/durasi; `lib/evaluationMetrics.js` menghitung M1–M7; export via `scripts/export-evaluation.mjs`.
 
 ---
 
@@ -311,7 +303,7 @@ Suite utama mencakup sanitasi media, magic-byte image, AI limits, rate limit, pe
 - Web hanya listen `127.0.0.1`; expose via reverse proxy.
 - `index.html` root hanya placeholder, bukan entry point Express.
 - UI berada di `lib/web/views/`; event binding harus via `addEventListener` di script nonce.
-- Jangan membuat logic pemasaran ganda di web/bot; taruh di `lib/features/pemasaran/domain.js` atau `lib/actuator/`.
+- Jangan membuat logic pemasaran ganda di web/bot; taruh di `lib/features/pemasaran/domain.js` atau `lib/features/agent/actuator/`.
 - Untuk channel baru, tambahkan adapter di `lib/features/channels/` dan update prompt/registry/test.
 - Untuk write action AI baru, wajib lewat actuator + policy + audit log.
 - Tambahkan/ubah test saat mengubah security, scheduler, channel, AI tools, atau schema.

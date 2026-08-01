@@ -225,6 +225,7 @@ Dokumen ini adalah rencana kerja berbasis sprint untuk menindaklanjuti hasil aud
 | S11 | 0.5–1 hari | Vertical slicing F3: fitur `auth` + `dashboard` → `lib/features/`; `layout`/`pageInit` → `lib/shared/` |
 | S12 | 0.5 hari | Vertical slicing F4: fitur `produk` (CRUD + upload) → `lib/features/produk/` |
 | S13 | 0.5–1 hari | Vertical slicing F5: fitur `pemasaran` (domain + routes + jobs + view) → `lib/features/pemasaran/` |
+| S14 | 1–1.5 hari | Vertical slicing F6: fitur `agent` (core + runner + runs + actuator + jobs + approval + routes + view) → `lib/features/agent/` |
 | **Total** | **±5–7 hari kerja** | |
 
 ---
@@ -368,5 +369,31 @@ Dokumen ini adalah rencana kerja berbasis sprint untuk menindaklanjuti hasil aud
 **DoD**: tidak ada import `lib/pemasaran.js`, `lib/web/replizJobs.js`, `routes/api/pemasaran.js`, `views/pemasaran.js` tersisa; test hijau; CI hijau.
 
 **Fase berikutnya (rencana F6)**: fitur `agent` (terbesar) — pecah `lib/agent.js` (539 baris): `core.js` (initAgent, sessions, tools), `runner.js` (agentRunner), `runs.js` (agentRuns), `aiLimits.js`, `actuator/`, `autonomous.js` (autonomousJobs + autonomousConfig), `publishFeedback.js`, `approval.js` (scheduleApproval), `routes.js` (asisten + agentRuns API), `view.js` (asisten); `lib/telegramNotify.js` sudah di shared; importer: telegram-bot.js, server.js, health.js, env.js.
+
+---
+
+## 21. Sprint 14 — Vertical Slicing F6: Fitur `agent` (1 Agustus 2026)
+
+**Tujuan**: fitur terbesar dipindah + `lib/agent.js` 539 baris dipecah; web shell tersisa route kecil (channels, repliz).
+
+**Tasks (kode) — F6a: modul mandiri**
+- [x] `lib/features/agent/`: `runs.js` (agentRuns), `aiLimits.js`, `runner.js` (agentRunner), `actuator/` (5 file), `publishFeedback.js`, `approval.js` (scheduleApproval), `autonomousJobs.js` + `autonomousConfig.js`
+- [x] Co-located test (6 file): agentRuns, actuator, scheduleApproval, autonomousJobs, envAutonomy, aiLimits → `lib/features/agent/test/`
+- [x] Update importer: `lib/agent.js`, `health.js`, `telegram-bot.js`, `server.js`, `asisten/agentRuns route`, `pemasaran/jobs.js`, `qa-smoke.mjs`, `wibTime.test.js`
+
+**Tasks (kode) — F6b: pecah `lib/agent.js` + modul web**
+- [x] `core.js` (dari `lib/agent.js` — sessions, `initAgent`, tools; imports → `'./actuator/'`, `'./runs.js'`, `'../channels/'`, `'../../shared/db.js'`)
+- [x] `routes.js` (dari `routes/api/asisten.js` + `routes/api/agentRuns.js` **digabung**: `registerAsistenRoutes` + `registerAgentRunsRoutes`)
+- [x] `view.js` (dari `views/asisten.js`); `index.js` (public API: core + runner + runs + routes + view + aiLimits)
+- [x] Update importer: `server.js`, `telegram-bot.js`, `test-agent.js`, `auth/routes.js`, `createApp.js`, `pages.js`, `qa-smoke.mjs`
+- [x] Verifikasi `npm run test:ci` → 103/103 + QA PASSED (3 kali gagal: level path actuator `'../../'`→`'../../../'` untuk shared, `runs.js` dynamic import evaluationMetrics, qa-smoke actuatorFiles paths)
+
+**Docs**: `AGENTS.md`, `README.md`, `CODEBASE_WIKI.md`, `logbook.md`
+
+**Commit**: `refactor(agent): move agent feature to lib/features/ (vertical slicing F6)`
+
+**DoD**: tidak ada `lib/agent*.js`, `lib/actuator/`, `lib/autonomous*.js`, `lib/{aiLimits,publishFeedback,scheduleApproval}.js`, `routes/api/{asisten,agentRuns}.js`, `views/asisten.js` tersisa; test hijau; CI hijau.
+
+**Fase berikutnya (rencana F7)**: fitur `evaluasi` (kecil) — `lib/evaluationMetrics.js` → `lib/features/evaluasi/metrics.js`; `lib/web/views/evaluasi.js` → `view.js`; `registerAgentRunsRoutes` bagian metrics dipisah ke `lib/features/evaluasi/routes.js` (atau dibiarkan di agent — keputusan: pindah agar metrics punya rumah sendiri); `lib/health.js` → `lib/web/health.js` (web shell); importer: createApp, pages, qa-smoke, agent/runs.js (dynamic import evaluationMetrics); co-located test `test/evaluationMetrics.test.js`.
 
 

@@ -7,7 +7,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { createWebApp } from '../lib/web/createApp.js';
-import { getAutonomyConfig } from '../lib/actuator/policy.js';
+import { getAutonomyConfig } from '../lib/features/agent/actuator/policy.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const repoRoot = path.join(__dirname, '..');
@@ -15,7 +15,7 @@ import { loginPage } from '../lib/features/auth/view.js';
 import { dashboardPage } from '../lib/features/dashboard/view.js';
 import { produkPage } from '../lib/features/produk/view.js';
 import { pemasaranPage } from '../lib/features/pemasaran/view.js';
-import { asistenPage } from '../lib/web/views/asisten.js';
+import { asistenPage } from '../lib/features/agent/view.js';
 import { evaluasiPage } from '../lib/web/views/evaluasi.js';
 
 // HTML attributes only — JS property assignment (saveBtn.onclick =) is CSP-safe
@@ -46,7 +46,7 @@ function check(name, fn) {
 const VIEW_SOURCES = [
   'lib/features/produk/view.js',
   'lib/features/pemasaran/view.js',
-  'lib/web/views/asisten.js',
+  'lib/features/agent/view.js',
   'lib/features/dashboard/view.js',
   'lib/web/views/evaluasi.js',
   'lib/features/auth/view.js',
@@ -67,16 +67,16 @@ check('createWebApp exports app', () => {
 });
 
 const actuatorFiles = [
-  'lib/actuator/index.js',
-  'lib/actuator/policy.js',
-  'lib/actuator/calendar.js',
-  'lib/actuator/contentPlan.js',
-  'lib/actuator/schedule.js',
-  'lib/agentRuns.js',
-  'lib/agentRunner.js',
-  'lib/autonomousJobs.js',
-  'lib/scheduleApproval.js',
-  'lib/publishFeedback.js',
+  'lib/features/agent/actuator/index.js',
+  'lib/features/agent/actuator/policy.js',
+  'lib/features/agent/actuator/calendar.js',
+  'lib/features/agent/actuator/contentPlan.js',
+  'lib/features/agent/actuator/schedule.js',
+  'lib/features/agent/runs.js',
+  'lib/features/agent/runner.js',
+  'lib/features/agent/autonomousJobs.js',
+  'lib/features/agent/approval.js',
+  'lib/features/agent/publishFeedback.js',
   'lib/shared/telegramNotify.js',
   'lib/features/channels/index.js',
   'lib/features/channels/registry.js',

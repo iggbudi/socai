@@ -6,9 +6,9 @@ import crypto from 'crypto';
 import { fileURLToPath } from 'url';
 import { validateBotEnvironment } from './lib/env.js';
 import { pool } from './lib/shared/db.js';
-import { agentSessions, agentSessionLastUsed, agentSessionPromises, touchAgentSession, initAgent } from './lib/agent.js';
-import { createAgentRun, completeAgentRun } from './lib/agentRuns.js';
-import { resolveAutonomyMode } from './lib/actuator/index.js';
+import { agentSessions, agentSessionLastUsed, agentSessionPromises, touchAgentSession, initAgent } from './lib/features/agent/core.js';
+import { createAgentRun, completeAgentRun } from './lib/features/agent/runs.js';
+import { resolveAutonomyMode } from './lib/features/agent/actuator/index.js';
 import { isReplizConfigured } from './lib/shared/repliz.js';
 import {
   savePlansToDb,
@@ -16,11 +16,11 @@ import {
   schedulePlanToReplizNow,
   syncPlanReplizStatus,
 } from './lib/features/pemasaran/domain.js';
-import { normalizeAiMessage, AiMessageError } from './lib/aiLimits.js';
+import { normalizeAiMessage, AiMessageError } from './lib/features/agent/aiLimits.js';
 import { createRateLimiter } from './lib/shared/rateLimit.js';
 import { assertValidImageBuffer, detectImageType, extForImageType } from './lib/shared/imageFile.js';
 import { createTelegramAccess } from './lib/telegramAccess.js';
-import { approvePlanSchedule, rejectPlanSchedule } from './lib/scheduleApproval.js';
+import { approvePlanSchedule, rejectPlanSchedule } from './lib/features/agent/approval.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);

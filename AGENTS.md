@@ -81,17 +81,17 @@ Copy `.env.example` → `.env` before running. Web validates env on startup via 
 |--------|------|
 | `lib/shared/db.js` | PostgreSQL pools (shared infra): `pool` (write), `aiReadPool` (read-only untuk AI `db_query`), `closeAgentPools()` — tanpa import dari `lib/features/` |
 | `lib/shared/` | Shared infra per fitur (F0/F1): `db.js`, `wibTime.js`, `rateLimit.js`, `mediaUrl.js`, `imageFile.js`, `html.js`, `repliz.js`, `telegramNotify.js` + co-located test di `lib/shared/test/` |
-| `lib/agent.js` | AI agent (`@earendil-works/pi-coding-agent`), session map, `initAgent()`, tools `db_query` (SELECT-only), `web_search`, actuator tools (`get_calendar_gaps`, `save_content_plan`, `schedule_content`, `sync_content_status`), active run context exports |
-| `lib/agentRuns.js` | Research audit log: `initAgentRunsSchema`, `createAgentRun`, `logToolCall`, `completeAgentRun`, `getAgentRunMetrics`, `listAgentRuns` |
+| `lib/features/agent/core.js` | AI agent (`@earendil-works/pi-coding-agent`), session map, `initAgent()`, tools `db_query` (SELECT-only), `web_search`, actuator tools (`get_calendar_gaps`, `save_content_plan`, `schedule_content`, `sync_content_status`), active run context exports |
+| `lib/features/agent/runs.js` | Research audit log: `initAgentRunsSchema`, `createAgentRun`, `logToolCall`, `completeAgentRun`, `getAgentRunMetrics`, `listAgentRuns` |
 | `lib/evaluationMetrics.js` | Metrik penelitian M1–M7: `getEvaluationMetrics()`, `resolveEvaluationPeriod()` |
-| `lib/actuator/` | Bounded autonomy layer: `resolveAutonomyMode`, policy checks, wrappers around `lib/features/pemasaran/` write paths |
+| `lib/features/agent/actuator/` | Bounded autonomy layer: `resolveAutonomyMode`, policy checks, wrappers around `lib/features/pemasaran/` write paths |
 | `lib/features/channels/` | Multi-channel adapter: `registry.js`, `threads.js`, `instagram.js`, `getChannel()`, `listChannels()`, `buildChannelsPromptSection()` |
-| `lib/features/` | Vertical slicing: satu folder per fitur (F2: `channels`; F3: `auth` + `dashboard`; F4: `produk`; F5: `pemasaran`; F6+: agent, telegram) — domain/API/view/test co-located |
+| `lib/features/` | Vertical slicing: satu folder per fitur (F2: `channels`; F3: `auth` + `dashboard`; F4: `produk`; F5: `pemasaran`; F6: `agent`; F7+: evaluasi, telegram) — domain/API/view/test co-located |
 | `lib/features/pemasaran/` | Shared pemasaran/Repliz logic (web + bot + agent): `domain.js` (`savePlansToDb`, `schedulePlanToChannel` alias `schedulePlanToRepliz`, `syncPlanReplizStatus`, `parseMarketingSchedule`), `routes.js`, `jobs.js` (background Repliz sync/auto-schedule), `view.js` |
 | `lib/shared/mediaUrl.js` | `sanitizeImageUrl()` — HTTPS whitelist, blocks `javascript:`/`data:`/`http://`, allows `/uploads/...` |
 | `lib/shared/imageFile.js` | Magic-byte detection (`jpeg`/`png`/`gif`/`webp`), `assertValidImageBuffer()` |
 | `lib/shared/rateLimit.js` | `createRateLimiter()` — Express middleware + standalone check/consume |
-| `lib/aiLimits.js` | `normalizeAiMessage()`, `AiMessageError`, `AI_MESSAGE_MAX_LENGTH` |
+| `lib/features/agent/aiLimits.js` | `normalizeAiMessage()`, `AiMessageError`, `AI_MESSAGE_MAX_LENGTH` |
 | `lib/env.js` | Startup validation for web/bot (DB, session, CSRF, models, Xiaomi keys) |
 | `lib/shared/repliz.js` | Repliz HTTP client, `createThreadsSchedule()`, `getReplizSchedule()`, `isReplizConfigured()` |
 | `lib/features/auth/` | Login/logout, session CSRF, login rate limit: `requireLogin`, `csrfToken` (`generateCsrfToken`, `ensureSessionCsrfToken`, `validateCsrfToken`), `loginRateLimit`, `routes` (login/logout), `view` (`loginPage`) + co-located test |
@@ -99,12 +99,12 @@ Copy `.env.example` → `.env` before running. Web validates env on startup via 
 | `lib/features/produk/` | CRUD produk + upload gambar: `routes.js` (`registerProdukRoutes` + `registerUploadRoutes`), `upload.js` (multer 5MB + magic-byte), `view.js` (`produkPage`) |
 | `lib/telegramAccess.js` | `createTelegramAccess()` — role-based ACL (`super_admin` > `operator` > `viewer`), migrates legacy `allowed_user_ids[]` |
 | `lib/health.js` | `collectHealthStatus()` — DB ping + optional config flags (`?detail=1`) |
-| `lib/agentRuns.js` | `agent_runs` audit log: create/log/complete runs, metrics, purge |
-| `lib/actuator/` | Bounded actuator tools + `AUTONOMY_MODE` policy |
-| `lib/agentRunner.js` | `runAgentTask()` — programmatic agent prompt (cron/chat) |
-| `lib/autonomousJobs.js` | Weekly plan cron, publish feedback refresh, agent_runs purge |
-| `lib/scheduleApproval.js` | `REQUIRE_APPROVAL` flow + Telegram approve/reject |
-| `lib/publishFeedback.js` | Publish outcome cache injected into agent system prompt |
+| `lib/features/agent/runs.js` | `agent_runs` audit log: create/log/complete runs, metrics, purge |
+| `lib/features/agent/actuator/` | Bounded actuator tools + `AUTONOMY_MODE` policy |
+| `lib/features/agent/runner.js` | `runAgentTask()` — programmatic agent prompt (cron/chat) |
+| `lib/features/agent/autonomousJobs.js` | Weekly plan cron, publish feedback refresh, agent_runs purge |
+| `lib/features/agent/approval.js` | `REQUIRE_APPROVAL` flow + Telegram approve/reject |
+| `lib/features/agent/publishFeedback.js` | Publish outcome cache injected into agent system prompt |
 | `lib/web/` | Web app modules: `createApp.js` (Express factory), `middleware/` (CSRF, CSP nonce), `routes/` (pages + health + API sisa), `views/` (sisa view) |
 
 **Entry points:** `server.js` (thin bootstrap: env validation, schema init, `createWebApp()`, listen, shutdown), `telegram-bot.js` (access control via `lib/telegramAccess.js` + `telegram-users.json`, wizards, Repliz commands).
