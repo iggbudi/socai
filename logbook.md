@@ -479,5 +479,5 @@ Fitur pertama masuk pola `lib/features/` — membuktikan vertical slicing (domai
 ### Commit
 | Commit | Pesan |
 |--------|-------|
-| `(F2)` | `refactor(channels): move channels feature to lib/features/ (vertical slicing F2)` |
+| `4c1b516` | `refactor(channels): move channels feature to lib/features/ (vertical slicing F2)` |
 

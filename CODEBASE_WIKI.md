@@ -355,3 +355,4 @@ Rencana & status: `sprint-plan.md` · catatan sesi: `logbook.md` (Sesi 1 Agustus
 | S7 | `67305d1` | Finalisasi docs (changelog, retrospective), regression penuh, tag `v1.1.0` |
 | S8 | `ea6f555` | Vertical slicing F0: `pool`/`aiReadPool`/`closeAgentPools()` diekstrak `lib/agent.js` → `lib/shared/db.js`; 11 importer diupdate (web, bot, agentRunner, autonomousJobs) — tanpa perubahan behavior |
 | S9 | `dd6f002` | Vertical slicing F1: 7 modul shared (`wibTime`, `rateLimit`, `mediaUrl`, `imageFile`, `html`, `repliz`, `telegramNotify`) → `lib/shared/`; ±20 importer diupdate; co-located test `lib/shared/test/`; glob `npm test` + qa-smoke path diupdate |
+| S10 | `4c1b516` | Vertical slicing F2: fitur `channels` (5 file) → `lib/features/channels/`; 11 importer diupdate; `env.js` pengecualian terdokumentasi (CHANNEL_IDS); co-located test + glob `npm test` + qa-smoke diupdate |
