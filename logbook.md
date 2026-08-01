@@ -454,3 +454,30 @@ Pindahkan modul shared murni (tanpa ketergantungan fitur) ke `lib/shared/`; mula
 |--------|-------|
 | `dd6f002` | `refactor(shared): move pure shared modules to lib/shared/ (vertical slicing F1)` |
 
+---
+
+## Vertical Slicing — Fase 2: Fitur `channels` (1 Agustus 2026, lanjutan)
+
+### Tujuan
+Fitur pertama masuk pola `lib/features/` — membuktikan vertical slicing (domain + test co-located).
+
+### Perubahan (kode)
+- **5 file → `lib/features/channels/`**: `index.js`, `registry.js`, `threads.js`, `instagram.js`, `prompt.js`.
+- Import internal: `threads.js`/`instagram.js` → `'../../shared/repliz.js'` (relatif baru di `lib/features/channels/`).
+- **11 importer diupdate**: `lib/agent.js`, `lib/env.js`, `lib/evaluationMetrics.js`, `lib/health.js`, `lib/pemasaran.js`, `lib/publishFeedback.js`, `lib/actuator/calendar.js`, `lib/web/replizJobs.js`, `lib/web/routes/api/{channels,repliz}.js`.
+- **`env.js` + `CHANNEL_IDS`**: pengecualian terdokumentasi — `env.js` (bootstrap validator, bukan `lib/shared/`) import dari `lib/features/channels/index.js`; konstanta `CHANNEL_IDS` tetap satu sumber di fitur (tanpa duplikasi).
+- **Co-located test**: `test/channels.test.js` → `lib/features/channels/test/channels.test.js` (import `../index.js`, `../prompt.js`, `../../../env.js`); glob `npm test` + `"lib/features/**/*.test.js"`; `qa-smoke.mjs` path list → `lib/features/channels/*`.
+- **Test count turun 103 → 90** saat glob belum diupdate (test channels tidak dijalankan) → glob diupdate → **103/103**.
+
+### Kendala & pelajaran
+- **Race condition paralel terulang** (git mv vs sed berjalan bersamaan) — pola sama dengan F1; dieksekusi ulang sekuensial. Pelajaran ditegaskan: batch shell yang saling bergantung (mv → sed → verifikasi) **wajib satu command chain**, jangan diparalelkan.
+- **Test count menurun tanpa disadari** jika glob test tidak mengikuti pemindahan test — selalu bandingkan jumlah test sebelum/sesudah.
+
+### Verifikasi
+- `npm run test:ci` → **103/103 + QA PASSED**.
+
+### Commit
+| Commit | Pesan |
+|--------|-------|
+| `(F2)` | `refactor(channels): move channels feature to lib/features/ (vertical slicing F2)` |
+

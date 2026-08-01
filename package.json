@@ -9,7 +9,7 @@
     "start": "node server.js",
     "bot": "node telegram-bot.js",
     "dev": "node server.js & node telegram-bot.js",
-    "test": "node --test \"test/**/*.test.js\" \"lib/shared/**/*.test.js\"",
+    "test": "node --test \"test/**/*.test.js\" \"lib/shared/**/*.test.js\" \"lib/features/**/*.test.js\"",
     "test:ci": "npm test && QA_SKIP_HTTP=1 node test/qa-smoke.mjs",
     "eval:export": "node scripts/export-evaluation.mjs"
   },

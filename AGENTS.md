@@ -8,7 +8,7 @@ Node.js ESM app for **Batik Bakaran** product & marketing management:
 - **Telegram bot** (`telegram-bot.js`) — Telegraf, content wizards, Repliz scheduling, shared AI agent
 - **Shared `lib/` modules** — DB pools (`lib/shared/db.js`), AI agent, rate limits, image/URL validation, Repliz client, env validation
 - **PostgreSQL** — `produk`, `pemasaran`, `users`, `user_sessions`
-- **Repliz** — optional multi-channel content scheduling/sync (Threads + Instagram via `lib/channels/`)
+- **Repliz** — optional multi-channel content scheduling/sync (Threads + Instagram via `lib/features/channels/`)
 - **Cloudinary** — optional image upload from Telegram marketing wizard
 
 > Audit & rencana remediasi sprint: `sprint-plan.md` · catatan sesi: `logbook.md` ·
@@ -85,7 +85,8 @@ Copy `.env.example` → `.env` before running. Web validates env on startup via 
 | `lib/agentRuns.js` | Research audit log: `initAgentRunsSchema`, `createAgentRun`, `logToolCall`, `completeAgentRun`, `getAgentRunMetrics`, `listAgentRuns` |
 | `lib/evaluationMetrics.js` | Metrik penelitian M1–M7: `getEvaluationMetrics()`, `resolveEvaluationPeriod()` |
 | `lib/actuator/` | Bounded autonomy layer: `resolveAutonomyMode`, policy checks, wrappers around `pemasaran.js` write paths |
-| `lib/channels/` | Multi-channel adapter: `registry.js`, `threads.js`, `instagram.js`, `getChannel()`, `listChannels()`, `buildChannelsPromptSection()` |
+| `lib/features/channels/` | Multi-channel adapter: `registry.js`, `threads.js`, `instagram.js`, `getChannel()`, `listChannels()`, `buildChannelsPromptSection()` |
+| `lib/features/` | Vertical slicing: satu folder per fitur (F2 — `channels` pertama; F3+: auth, produk, pemasaran, agent, telegram) — domain/API/view/test co-located |
 | `lib/pemasaran.js` | Shared pemasaran/Repliz logic: `savePlansToDb`, `schedulePlanToChannel` (alias `schedulePlanToRepliz`), `syncPlanReplizStatus`, `parseMarketingSchedule` |
 | `lib/shared/mediaUrl.js` | `sanitizeImageUrl()` — HTTPS whitelist, blocks `javascript:`/`data:`/`http://`, allows `/uploads/...` |
 | `lib/shared/imageFile.js` | Magic-byte detection (`jpeg`/`png`/`gif`/`webp`), `assertValidImageBuffer()` |

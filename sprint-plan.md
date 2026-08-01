@@ -221,6 +221,7 @@ Dokumen ini adalah rencana kerja berbasis sprint untuk menindaklanjuti hasil aud
 | S7 | 0.5 hari | Docs final + release |
 | S8 | 0.5 hari | Vertical slicing F0: `pool`/`aiReadPool` → `lib/shared/db.js` |
 | S9 | 0.5–1 hari | Vertical slicing F1: 7 modul shared → `lib/shared/` + co-located test |
+| S10 | 0.5 hari | Vertical slicing F2: fitur `channels` → `lib/features/channels/` + co-located test |
 | **Total** | **±5–7 hari kerja** | |
 
 ---
@@ -281,5 +282,27 @@ Dokumen ini adalah rencana kerja berbasis sprint untuk menindaklanjuti hasil aud
 **DoD**: tidak ada import path lama tersisa; test hijau; CI hijau.
 
 **Fase berikutnya (rencana F2)**: pindahkan fitur `channels` (5 file, self-contained) ke `lib/features/channels/`; `env.js` (import `CHANNEL_IDS`) jadi pengecualian terdokumentasi atau pindahkan `CHANNEL_IDS` ke fitur.
+
+---
+
+## 17. Sprint 10 — Vertical Slicing F2: Fitur `channels` (1 Agustus 2026)
+
+**Tujuan**: fitur pertama masuk pola `lib/features/` — membuktikan pola vertical slicing (domain + test co-located).
+
+**Tasks (kode)**
+- [x] Pindah 5 file → `lib/features/channels/`: `index.js`, `registry.js`, `threads.js`, `instagram.js`, `prompt.js`
+- [x] Import internal: `threads.js`/`instagram.js` → `'../../shared/repliz.js'`
+- [x] Update 11 importer: `lib/agent.js`, `lib/env.js`, `lib/evaluationMetrics.js`, `lib/health.js`, `lib/pemasaran.js`, `lib/publishFeedback.js`, `lib/actuator/calendar.js`, `lib/web/replizJobs.js`, `lib/web/routes/api/{channels,repliz}.js`
+- [x] `env.js` (import `CHANNEL_IDS`): pengecualian terdokumentasi — bootstrap validator, import `lib/features/channels/index.js` tanpa duplikasi konstanta
+- [x] Co-located test: `test/channels.test.js` → `lib/features/channels/test/`; glob `npm test` + `lib/features/**/*.test.js`; `qa-smoke.mjs` path list diupdate
+- [x] Verifikasi `npm run test:ci` → 103/103 + QA PASSED
+
+**Docs**: `AGENTS.md`, `CODEBASE_WIKI.md`, `logbook.md`
+
+**Commit**: `refactor(channels): move channels feature to lib/features/ (vertical slicing F2)`
+
+**DoD**: tidak ada import `lib/channels/` tersisa; test hijau; CI hijau.
+
+**Fase berikutnya (rencana F3)**: fitur `auth` + `dashboard` — `requireLogin`, `csrfToken`, `loginRateLimit`, routes login/logout, `loginPage` → `lib/features/auth/`; `dashboardPage` → `lib/features/dashboard/`; hapus `lib/web/routes/auth.js` & `lib/web/views/login.js` dari web shell (pakai shim re-export bila perlu).
 
 

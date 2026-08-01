@@ -86,8 +86,9 @@ Catatan:
 │   ├── env.js                        # Validasi env web/bot
 │   ├── health.js                     # Health status collector
 │   ├── actuator/                     # Bounded write tools + policy
-│   ├── channels/                     # Adapter channel social media
-│   └── web/                          # Express app modular
+│   ├── features/
+│   │   └── channels/                   # Adapter channel social media (F2): registry, threads, instagram, prompt + test/
+│   ├── web/                            # Express app modular
 ├── public/uploads/                   # Upload gambar lokal
 └── test/                             # node:test suites + qa-smoke.mjs
 ```
@@ -212,10 +213,10 @@ Audit: `lib/agentRuns.js` mencatat run/tool/plans/error/durasi; `lib/evaluationM
 
 | Komponen | Peran |
 |---|---|
-| `lib/channels/registry.js` | Register/list channel berdasarkan `ENABLED_CHANNELS` |
-| `lib/channels/threads.js` | Adapter Threads via Repliz account utama |
-| `lib/channels/instagram.js` | Adapter Instagram via `REPLIZ_INSTAGRAM_ACCOUNT_ID` |
-| `lib/channels/prompt.js` | Prompt section channel untuk AI |
+| `lib/features/channels/registry.js` | Register/list channel berdasarkan `ENABLED_CHANNELS` |
+| `lib/features/channels/threads.js` | Adapter Threads via Repliz account utama |
+| `lib/features/channels/instagram.js` | Adapter Instagram via `REPLIZ_INSTAGRAM_ACCOUNT_ID` |
+| `lib/features/channels/prompt.js` | Prompt section channel untuk AI |
 | `lib/shared/repliz.js` | HTTP client Repliz |
 | `lib/web/replizJobs.js` | Background sync dan auto-schedule |
 
@@ -308,7 +309,7 @@ Suite utama mencakup sanitasi media, magic-byte image, AI limits, rate limit, pe
 - `index.html` root hanya placeholder, bukan entry point Express.
 - UI berada di `lib/web/views/`; event binding harus via `addEventListener` di script nonce.
 - Jangan membuat logic pemasaran ganda di web/bot; taruh di `lib/pemasaran.js` atau `lib/actuator/`.
-- Untuk channel baru, tambahkan adapter di `lib/channels/` dan update prompt/registry/test.
+- Untuk channel baru, tambahkan adapter di `lib/features/channels/` dan update prompt/registry/test.
 - Untuk write action AI baru, wajib lewat actuator + policy + audit log.
 - Tambahkan/ubah test saat mengubah security, scheduler, channel, AI tools, atau schema.
 
@@ -333,7 +334,7 @@ Suite utama mencakup sanitasi media, magic-byte image, AI limits, rate limit, pe
 - Jaga dokumentasi `CODEBASE_WIKI.md`, `AGENTS.md`, `README.md`, `autonomous.md`, dan `evaluasi.md` tetap sinkron.
 - Pertimbangkan migration runner eksplisit jika schema makin kompleks.
 - Pertimbangkan memecah `telegram-bot.js` jika command/wizard bertambah besar.
-- Tambahkan adapter channel baru melalui pola `lib/channels/*` + tests.
+- Tambahkan adapter channel baru melalui pola `lib/features/channels/*` + tests.
 - Perluas metrics dashboard bila kebutuhan penelitian bertambah.
 
 ---
