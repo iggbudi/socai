@@ -332,9 +332,33 @@ Pindahkan inline styles ke CSS classes agar `style-src` tidak perlu `'unsafe-inl
 
 ---
 
+## Sprint 6 — Test Route Level (A7)
+
+### Temuan Audit
+- Bug A1 (login 500) lolos dari suite karena belum ada test level route; cakupan test hanya unit modul + QA smoke.
+
+### Perbaikan
+- **`test/routes.test.js`** diperluas dari 2 → 9 test (node:test + `app.listen(0)` + fetch, tanpa database):
+  - Regresi A1: `POST /login` non-form & tanpa body → bukan 500.
+  - `GET /health` → shape JSON (`status`, `checks.database`) — menerima 200/503 (503 saat DB down).
+  - `GET /api/produk` tanpa session → 401 JSON.
+  - `POST /logout` tanpa session → 401 (bukan 500).
+  - CSRF e2e: `POST /api/produk` tanpa Origin → 403; Origin asing → 403.
+  - `GET /` → 302 redirect `/login`; `GET /login` → 200 halaman login.
+- `test/qa-smoke.mjs` tidak perlu perubahan (A5/A6 checks sudah ada).
+
+### Verifikasi
+- `node --test test/routes.test.js`: **9/9 pass**; `npm run test:ci`: **103/103 + QA PASSED**.
+
+### Commit
+| Commit | Pesan |
+|--------|-------|
+| *(tbd)* | test(web): add route-level tests (login body guard, health, auth guard) |
+
+---
+
 ## Backlog / Lanjutan
 
 | Prioritas | Item |
 |-----------|------|
-| P3 | Sprint 6: perluas `test/routes.test.js` (health, auth guard, CSRF) (A7) |
-| Info | Sprint 7: konfirmasi token bot @DBSPresensiBot & rotasi DB password (A8) |
+| Info | Sprint 7: finalisasi docs & release — konfirmasi token bot @DBSPresensiBot (A8), rotasi DB password, regression penuh + tag v1.1.0 |

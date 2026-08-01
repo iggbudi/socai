@@ -171,13 +171,15 @@ Dokumen ini adalah rencana kerja berbasis sprint untuk menindaklanjuti hasil aud
 **Tujuan**: cakupan test untuk routes web (regresi A1 tidak terulang).
 
 **Tasks**
-- [ ] `test/routes.test.js` (node:test + `app.listen(0)` + fetch):
-  - `POST /login` tanpa body / Content-Type non-form → **bukan 500**
-  - `GET /health` → shape JSON (`status`, `checks.database`)
-  - `GET /api/produk` tanpa session → 401
-  - `POST /logout` tanpa session → 401/redirect (bukan 500)
-- [ ] Sesuaikan `test/qa-smoke.mjs` bila perlu
-- [ ] Jalankan penuh: `npm run test:ci`
+- [x] `test/routes.test.js` (node:test + `app.listen(0)` + fetch):
+  - [x] `POST /login` tanpa body / Content-Type non-form → **bukan 500** (dari Sprint 1)
+  - [x] `GET /health` → shape JSON (`status`, `checks.database`) — terima 200/503
+  - [x] `GET /api/produk` tanpa session → 401
+  - [x] `POST /logout` tanpa session → 401 (bukan 500)
+  - [x] CSRF e2e: `POST /api/produk` tanpa Origin / Origin asing → 403
+  - [x] `GET /` → 302 redirect `/login`; `GET /login` → 200
+- [x] Sesuaikan `test/qa-smoke.mjs` bila perlu — tidak perlu perubahan
+- [x] Jalankan penuh: `npm run test:ci` → **103/103 + QA PASSED**
 
 **Docs**: `AGENTS.md` (bagian test), `logbook.md`
 
