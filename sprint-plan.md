@@ -18,6 +18,7 @@ Dokumen ini adalah rencana kerja berbasis sprint untuk menindaklanjuti hasil aud
 | A6 | P3 | CSRF origin check menerima Host header & `X-Forwarded-Host/Proto` dari client; `trust proxy: true` terlalu luas |
 | A7 | P3 | Tidak ada test route (bug A1 lolos dari suite); `agent_runs` 0 baris di prod → metrik M1–M7 masih nol |
 | A8 | Info | Token bot Telegram = @DBSPresensiBot (konfirmasi disengaja?); rotasi DB password berpola lemah disarankan |
+| A9 | P1 (CI) | `package-lock.json` berisi 123 URL `http://mirrors.tencentyun.com` (mirror lokal) → `npm ci` gagal di GitHub Actions (run pertama CI: failure) — diperbaiki di Sprint 0 |
 
 ---
 
@@ -55,9 +56,10 @@ Dokumen ini adalah rencana kerja berbasis sprint untuk menindaklanjuti hasil aud
 **Tasks**
 - [ ] Review perubahan `CODEBASE_WIKI.md` yang belum di-commit (commit bila valid, revert bila tidak relevan) — terpisah dari commit plan ini
 - [ ] `npm run test:ci` → baseline hijau (77 unit test + QA smoke)
-- [ ] Buat file ini (`sprint-plan.md`) sebagai docs sprint
+- [x] Buat file ini (`sprint-plan.md`) sebagai docs sprint
+- [x] Fix CI blocker (A9): regenerate `package-lock.json` — ganti 123 URL `http://mirrors.tencentyun.com` → `https://registry.npmjs.org` (versi & integrity tidak berubah); commit terpisah
 - [ ] Commit: `docs: add audit sprint plan (S0 baseline)`
-- [ ] Push + verifikasi CI hijau
+- [x] Push + verifikasi CI hijau — run pertama gagal (A9), setelah fix lockfile → hijau
 
 **DoD**: CI hijau; `sprint-plan.md` ada di `main`.
 
