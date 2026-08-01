@@ -1,400 +1,328 @@
 # CODEBASE WIKI — socai.my.id
 
-Dokumentasi codebase untuk project `/var/www/socai.my.id` (Batik Bakaran — produk, pemasaran Threads, AI assistant, bot Telegram).
+Dokumentasi codebase untuk project `/var/www/socai.my.id` (**Batik Bakaran** — manajemen produk, pemasaran multi-channel, AI assistant, bounded autonomy, Repliz, dan bot Telegram).
 
-**Terakhir diperbarui:** 17 Juni 2026  
+**Terakhir diperbarui:** 26 Juni 2026  
 **Repo:** https://github.com/iggbudi/socai.git
 
-Dokumen terkait: `AGENTS.md` (instruksi coding agent), `README.md` (arsitektur + UML/DAD), `logbook.md` (catatan sesi pengembangan).
+Dokumen terkait: `AGENTS.md` (instruksi coding agent), `README.md` (overview + diagram), `autonomous.md` (bounded autonomy), `evaluasi.md` (metrik penelitian), `logbook.md` (catatan pengembangan).
 
 ---
 
-## 1. Ringkasan
+## 1. Ringkasan Eksekutif
 
-`socai.my.id` adalah aplikasi Node.js ESM untuk manajemen produk Batik Bakaran, perencanaan konten pemasaran Threads, AI marketing assistant, integrasi Repliz, dan bot Telegram.
+`socai.my.id` adalah aplikasi Node.js ESM tanpa build step untuk mendukung UMKM Batik Bakaran dalam mengelola produk dan mengotomasi konten pemasaran. Sistem terdiri dari web dashboard, bot Telegram, AI agent berbasis tools, integrasi Repliz untuk scheduling/publishing, dan audit/evaluasi penelitian M1–M7.
 
 | Aspek | Detail |
 |---|---|
-| Runtime | Node.js `>=24`, tanpa build step / TypeScript |
-| Web | Express 5 — `server.js` (bootstrap) + `lib/web/` |
-| Bot | Telegraf — `telegram-bot.js` |
-| Database | PostgreSQL (`produk`, `pemasaran`, `users`, `user_sessions`) |
-| AI | `@earendil-works/pi-coding-agent` — `db_query` (read-only) + `web_search` |
-| Tests | `npm test` — 32 test (`node:test`); smoke QA: `node test/qa-smoke.mjs` |
-| Production | systemd: `socai-node.service` (web), `socai-bot.service` (bot) |
+| Runtime | Node.js `>=24`, ESM, tanpa TypeScript/build step |
+| Web | Express 5, session auth, inline HTML views, REST API, AI chat SSE |
+| Bot | Telegraf long-polling, wizard produk/konten, ACL role-based |
+| DB | PostgreSQL: `produk`, `pemasaran`, `users`, `user_sessions`, `agent_runs` |
+| AI | `@earendil-works/pi-coding-agent`, tool `db_query`, `web_search`, actuator bounded |
+| Social scheduling | Repliz, channel adapter `threads` + `instagram` |
+| Media | Cloudinary opsional; fallback `/public/uploads/` lokal |
+| Test | `npm test` (`node:test`) + `npm run test:ci` + smoke QA |
+| Production | systemd: `socai-node.service`, `socai-bot.service`; web bind `127.0.0.1` |
 
 ---
 
-## 2. Changelog
-
-Riwayat perubahan utama berdasarkan commit Git (`main`).
-
-### 2026-06-17 — Dokumentasi & QA
-
-| Commit | Ringkasan |
-|---|---|
-| `e77b406` | **README** — overview sistem, tech stack, keamanan, setup, diagram Mermaid (use case, activity, sequence, class, component, deployment, state, DAD level 0–1) |
-| `047abdb` | **logbook.md** — ringkasan Sprint 2/3, CSP fixes, QA, konfigurasi AI model, evaluasi penelitian |
-| `c673c40` | **QA smoke** — `test/qa-smoke.mjs`: cek CSP (no inline handlers), nonce tags, health/auth/CSRF HTTP |
-
-### 2026-06-17 — CSP hardening
-
-| Commit | Ringkasan |
-|---|---|
-| `64b242c` | Ganti semua `onclick`/`onchange` dengan `addEventListener` + nonce script; shared `HAMBURGER_BIND_JS` di `pageInit.js`; fix race SSE di `/api/asisten` |
-| `ba3df1b` | Hapus `style-src 'unsafe-inline'` — inline `style=` diganti CSS classes; preview upload via `classList` |
-
-### 2026-06-17 — Sprint 3 P2: refactor web
-
-| Commit | Ringkasan |
-|---|---|
-| `fe7f302` | Pecah `server.js` monolit (~2690 baris) → `lib/web/` (`createApp`, middleware, routes, views, `replizJobs`); Helmet CSP dengan per-request nonce; `server.js` jadi thin bootstrap (~140 baris) |
-
-### 2026-06-17 — Sprint 2 P2: CSRF logout, Telegram roles, tests
-
-| Commit | Ringkasan |
-|---|---|
-| `0d6e88c` | `lib/csrfToken.js` + `POST /logout` (CSRF); `lib/telegramAccess.js` (roles `super_admin` > `operator` > `viewer`); `/removeuser`, `/listusers`; `npm test` 32 suite |
-
-### 2026-06 — Sprint 1 P2 & keamanan
-
-| Commit | Ringkasan |
-|---|---|
-| `e66a580` | `lib/pemasaran.js` (shared save/schedule/sync Repliz); `lib/health.js`; Telegram scheduling unified dengan web |
-| `5d6b45b` | **P1 hardening** — AI message limits, rate limiter shared, magic-byte upload validation, graceful shutdown, `aiReadPool` (DB read-only AI) |
-| `b11f9a9` | **P0 hardening** — `lib/mediaUrl.js` (whitelist gambar), env validation web/bot terpisah, sanitize gambar di API/Repliz |
-| `6e2ccd0` | Hardening config & HTTP security awal |
-| `d110a21` | Initial commit |
-
----
-
-## 3. Cara Menjalankan
+## 2. Quick Start
 
 ```bash
-cp .env.example .env    # isi credential sebelum run
-npm start               # web — port 3010, bind 127.0.0.1
-npm run bot             # telegram bot (long-polling)
-npm run dev             # kedua process di background
-npm test                # 32 automated tests
-node test/qa-smoke.mjs  # smoke QA (butuh server jalan untuk HTTP checks)
+cp .env.example .env      # isi kredensial dan origin production
+npm start                 # web: default port 3010, bind 127.0.0.1
+npm run bot               # bot Telegram long-polling
+npm run dev               # web + bot di background
+npm test                  # unit tests
+npm run test:ci           # unit + qa-smoke tanpa HTTP
+npm run eval:export       # export metrik penelitian M1–M7 JSON
 ```
 
-Catatan operasional:
+Catatan:
 
-- Port web: `PORT` (default `3010`).
-- Web hanya listen `127.0.0.1` — wajib reverse proxy di production.
-- `APP_URL` harus benar agar CSRF lolos di production.
-- Startup memvalidasi env via `validateWebEnvironment()` / `validateBotEnvironment()`.
+- `validateWebEnvironment()` dipanggil saat web startup; `validateBotEnvironment()` saat bot startup.
+- Di production, `APP_URL` dan `SESSION_SECRET` wajib benar agar CSRF/session stabil.
+- Jika Repliz/Cloudinary tidak dikonfigurasi, fitur terkait harus gagal aman tanpa crash.
 
 ---
 
-## 4. Struktur File Penting
+## 3. Peta Struktur Project
 
 ```text
 .
-├── AGENTS.md                 # Instruksi project untuk coding agent
-├── CODEBASE_WIKI.md          # Dokumentasi codebase ini
-├── README.md                 # Arsitektur, UML, DAD
-├── logbook.md                # Catatan sesi pengembangan
-├── server.js                 # Thin bootstrap (~140 baris)
-├── telegram-bot.js           # Bot Telegram Telegraf
-├── telegram-users.json       # Allowlist user Telegram (roles)
-├── index.html                # Placeholder statis; Express menangani routing
+├── server.js                         # Thin bootstrap web + shutdown
+├── telegram-bot.js                   # Entry point bot Telegram
+├── package.json                      # Scripts, deps, Node >=24
+├── AGENTS.md                         # Instruksi agent project
+├── README.md                         # Overview + diagram sistem
+├── autonomous.md                     # Bounded autonomy & policy
+├── evaluasi.md                       # Metrik penelitian M1–M7
+├── CODEBASE_WIKI.md                  # Dokumen ini
+├── scripts/                          # Export metrics + SQL helper
 ├── lib/
-│   ├── agent.js              # AI agent, pool + aiReadPool, session map
-│   ├── pemasaran.js          # Shared marketing/Repliz logic
-│   ├── repliz.js             # Repliz HTTP client
-│   ├── telegramAccess.js     # Role-based ACL
-│   ├── csrfToken.js          # Session CSRF token
-│   ├── mediaUrl.js           # Image URL whitelist
-│   ├── imageFile.js          # Magic-byte image validation
-│   ├── rateLimit.js          # Shared rate limiter
-│   ├── aiLimits.js           # AI message length cap
-│   ├── env.js                # Startup env validation
-│   ├── health.js             # Health check collector
-│   └── web/
-│       ├── createApp.js      # Express factory
-│       ├── replizJobs.js     # Background Repliz sync + auto-schedule
-│       ├── middleware/       # auth, CSRF, CSP nonce, login rate limit, upload
-│       ├── routes/           # pages, auth, health, API
-│       └── views/            # HTML templates (login, dashboard, produk, pemasaran, asisten)
-├── public/uploads/           # Upload gambar lokal
-└── test/                     # node:test suites + qa-smoke.mjs
+│   ├── agent.js                      # AI agent, pools, tools, sessions
+│   ├── agentRunner.js                # Programmatic agent task runner
+│   ├── agentRuns.js                  # Audit log agent_runs
+│   ├── autonomousConfig.js           # Config autonomy mode
+│   ├── autonomousJobs.js             # Weekly plan cron, feedback, purge
+│   ├── evaluationMetrics.js          # Metrik M1–M7
+│   ├── pemasaran.js                  # Shared marketing/Repliz business logic
+│   ├── repliz.js                     # Repliz HTTP client
+│   ├── scheduleApproval.js           # Approval flow Telegram
+│   ├── publishFeedback.js            # Cache outcome publikasi untuk prompt
+│   ├── telegramAccess.js             # ACL role bot
+│   ├── telegramNotify.js             # Notifikasi Telegram
+│   ├── csrfToken.js                  # Session CSRF token
+│   ├── mediaUrl.js                   # Sanitasi URL gambar
+│   ├── imageFile.js                  # Magic-byte image validation
+│   ├── rateLimit.js                  # Shared rate limiter
+│   ├── aiLimits.js                   # Batas panjang pesan AI
+│   ├── env.js                        # Validasi env web/bot
+│   ├── health.js                     # Health status collector
+│   ├── actuator/                     # Bounded write tools + policy
+│   ├── channels/                     # Adapter channel social media
+│   └── web/                          # Express app modular
+├── public/uploads/                   # Upload gambar lokal
+└── test/                             # node:test suites + qa-smoke.mjs
 ```
 
 ---
 
-## 5. Arsitektur Web
+## 4. Arsitektur Runtime
 
-### Bootstrap (`server.js`)
-
-- Validasi env (`validateWebEnvironment`)
-- Inisialisasi schema Repliz/pemasaran (`initPemasaranReplizSchema`)
-- `createWebApp()` dari `lib/web/createApp.js`
-- Background jobs Repliz: sync status + auto-schedule (`lib/web/replizJobs.js`)
-- Graceful shutdown (`SIGINT`/`SIGTERM`): stop intervals, abort agent sessions, tutup HTTP server, `closeAgentPools()`
-
-### Modul web (`lib/web/`)
-
-| Modul | Peran |
-|---|---|
-| `createApp.js` | Factory Express: session PG store, Helmet+CSP, mount routes |
-| `middleware/auth.js` | `requireLogin` |
-| `middleware/csrf.js` | Origin/Referer CSRF untuk `/api/*` mutating |
-| `middleware/csp.js` | Per-request nonce untuk inline script/style |
-| `middleware/loginRateLimit.js` | 5 gagal / 15 menit / IP |
-| `middleware/upload.js` | Multer 5MB + filter mime |
-| `routes/pages.js` | Halaman HTML |
-| `routes/auth.js` | Login + logout |
-| `routes/health.js` | `/health` |
-| `routes/api/*` | Produk, pemasaran, Repliz, upload, asisten (SSE) |
-| `views/*.js` | Template HTML inline (tanpa bundler) |
-| `replizJobs.js` | Polling status Repliz + auto-schedule rencana pending |
-
-### Keamanan web
-
-- Helmet + CSP nonce; `script-src-attr 'none'` — tidak ada `onclick`/`onchange` di HTML
-- Session cookie: `httpOnly`, `sameSite: strict`, `secure` di production
-- Password: `bcryptjs`
-- Upload: extension/mime filter + magic-byte check; rename ekstensi sesuai tipe terdeteksi
-- Image URL: `sanitizeImageUrl()` — whitelist HTTPS + `/uploads/...`
-- Logout: `POST /logout` dengan token `_csrf` di session; `GET /logout` hanya redirect ke `/dashboard`
-- AI: rate limit web (`WEB_AI_RATE_LIMIT`), panjang pesan (`AI_MESSAGE_MAX_LENGTH`)
-
----
-
-## 6. Environment Variables
-
-Lihat `AGENTS.md` dan `.env.example` untuk daftar lengkap. Ringkasan:
-
-| Kategori | Variable utama |
-|---|---|
-| Core | `NODE_ENV`, `PORT`, `APP_URL`, `SESSION_SECRET` |
-| Database | `DB_*`, `DB_AI_READ_*` (read-only pool untuk AI `db_query`) |
-| AI | `AI_MODEL`, `AI_MODEL_FALLBACKS`, `TELEGRAM_AI_MODEL*`, `BRAVE_API_KEY`, `XIAOMI_API_KEY` |
-| Rate limits | `WEB_AI_RATE_LIMIT`, `TELEGRAM_AI_RATE_LIMIT`, `*_RATE_WINDOW_MS` |
-| Repliz | `REPLIZ_API_KEY`, `REPLIZ_SECRET`, `REPLIZ_ACCOUNT_ID`, `REPLIZ_SYNC_INTERVAL_MS` |
-| Telegram | `TELEGRAM_BOT_TOKEN`, `TELEGRAM_SUPER_ADMIN_ID` |
-| Media | `ALLOWED_IMAGE_HOSTS`, `CLOUDINARY_*` |
-
----
-
-## 7. Database
-
-PostgreSQL dipakai web, bot, dan AI tool (`pool` write; `aiReadPool` read-only untuk `db_query`).
-
-```sql
--- users: id, username, password (bcrypt)
-
--- produk: id, nama, harga, stok, gambar, deskripsi, created_at, updated_at
-
--- pemasaran:
---   id, judul, strategi, target_audiens, kanal, jadwal, copywriting, produk_terkait, created_at
---   gambar, status (default 'draft'), scheduled_at, published_at
---   external_post_id, external_status, last_error
---   repliz_schedule_id (unique index when not null), repliz_status, repliz_scheduled_at
---   repliz_last_error, repliz_synced_at, repliz_attempts (default 0)
---   auto_schedule_enabled (default true)
-
--- user_sessions: managed by connect-pg-simple
+```mermaid
+flowchart TB
+  WEB[Web Dashboard] --> EXPRESS[Express lib/web]
+  TG[Telegram Bot] --> BOT[telegram-bot.js]
+  EXPRESS --> AGENT[lib/agent.js]
+  BOT --> AGENT
+  AGENT --> RO[(AI read-only pool)] --> PG[(PostgreSQL)]
+  AGENT --> ACT[lib/actuator] --> PG
+  ACT --> RUNS[agent_runs audit] --> PG
+  EXPRESS --> PG
+  BOT --> PG
+  JOBS[Background jobs] --> PG
+  JOBS --> REPLIZ[Repliz API]
+  AGENT --> LLM[LLM provider]
+  AGENT --> BRAVE[Brave Search]
+  BOT --> CLOUD[Cloudinary]
+  EXPRESS --> REPLIZ
+  BOT --> REPLIZ
 ```
 
+Prinsip desain:
+
+- **Shared core**: web dan bot memakai modul yang sama (`agent.js`, `pemasaran.js`, `actuator/`).
+- **Bounded autonomy**: AI tidak bebas menulis DB; write path lewat actuator dan policy.
+- **Defense in depth**: CSRF, CSP nonce, rate limit, ACL Telegram, upload validation, DB read-only AI.
+- **Observability penelitian**: agent run/tool call dicatat untuk evaluasi M1–M7.
+
 ---
 
-## 8. Routes Web
+## 5. Web App (`server.js` + `lib/web/`)
 
-### Halaman
+`server.js` bertugas load `.env`, validasi environment, init schema, membuat app via `createWebApp()`, menjalankan background jobs, dan graceful shutdown.
+
+| Modul | Fungsi |
+|---|---|
+| `createApp.js` | Express factory; session PG store; Helmet/CSP; mount routes |
+| `middleware/auth.js` | Guard `requireLogin` |
+| `middleware/csrf.js` | CSRF Origin/Referer untuk mutasi `/api/*` |
+| `middleware/csp.js` | Nonce per request untuk inline script/style aman |
+| `middleware/loginRateLimit.js` | Login throttling 5/15 menit per IP |
+| `middleware/upload.js` | Multer 5MB + filter MIME/ext |
+| `routes/pages.js` | Halaman `/dashboard`, `/produk`, `/pemasaran`, `/asisten`, `/evaluasi` |
+| `routes/auth.js` | Login/logout; `POST /logout` wajib `_csrf` |
+| `routes/health.js` | `/health`, optional `?detail=1` |
+| `routes/api/*` | CRUD produk, pemasaran, upload, Repliz, AI SSE, agent metrics |
+| `views/*.js` | Template HTML inline; event harus via `addEventListener` ber-nonce |
+| `replizJobs.js` | Poll status Repliz dan auto-schedule plan pending |
+
+---
+
+## 6. Routes Web
+
+### Pages
 
 | Method | Path | Auth | Fungsi |
 |---|---:|---:|---|
-| GET | `/` | Tidak | Redirect → `/login` |
-| GET/POST | `/login` | Tidak | Login (POST rate-limited) |
-| GET | `/dashboard` | Ya | Dashboard |
-| GET | `/produk` | Ya | CRUD produk |
-| GET | `/pemasaran` | Ya | Rencana pemasaran + Repliz UI |
-| GET | `/asisten` | Ya | Chat AI (SSE) |
-| POST | `/logout` | Ya | Destroy session + agent (CSRF `_csrf`) |
-| GET | `/logout` | Tidak | Redirect → `/dashboard` (bookmark legacy) |
-| GET | `/health` | Tidak | Healthcheck JSON (`?detail=1` opsional) |
+| GET | `/` | No | Redirect ke `/login` |
+| GET/POST | `/login` | No | Login; POST rate-limited |
+| GET | `/dashboard` | Yes | Ringkasan aplikasi |
+| GET | `/produk` | Yes | UI CRUD produk |
+| GET | `/pemasaran` | Yes | UI rencana pemasaran + Repliz |
+| GET | `/asisten` | Yes | Chat AI SSE |
+| GET | `/evaluasi` | Yes | Dashboard metrik M1–M7 |
+| POST | `/logout` | Yes | Destroy session + agent; CSRF `_csrf` |
+| GET | `/logout` | No | Redirect legacy ke `/dashboard` |
+| GET | `/health` | No | Health JSON |
 
-### API (`/api/*` — CSRF pada POST/PUT/DELETE)
+### API
+
+Semua mutasi `/api/*` wajib lolos CSRF.
 
 | Method | Path | Fungsi |
 |---|---|---|
-| POST | `/api/upload` | Upload gambar (5MB, magic-byte) |
+| POST | `/api/upload` | Upload gambar 5MB, magic-byte validated |
 | GET/POST/PUT/DELETE | `/api/produk[/:id]` | CRUD produk |
 | GET/POST/DELETE | `/api/pemasaran[/:id]` | CRUD rencana pemasaran |
-| GET | `/api/repliz/accounts` | List akun Threads Repliz |
-| POST | `/api/pemasaran/repliz/schedule` | Bulk schedule ke Repliz |
-| POST | `/api/pemasaran/:id/repliz/schedule` | Schedule satu rencana |
-| POST | `/api/pemasaran/:id/repliz/retry` | Retry gagal |
-| POST | `/api/pemasaran/:id/repliz/sync` | Sync status dari Repliz |
-| POST | `/api/asisten` | Chat AI SSE (rate-limited) |
+| GET | `/api/channels` | Channel aktif/terkonfigurasi |
+| GET | `/api/repliz/accounts` | Akun Repliz; filter `type`/`channel` |
+| POST | `/api/pemasaran/repliz/schedule` | Bulk schedule |
+| POST | `/api/pemasaran/:id/repliz/schedule` | Schedule satu plan |
+| POST | `/api/pemasaran/:id/repliz/retry` | Retry schedule/publish gagal |
+| POST | `/api/pemasaran/:id/repliz/sync` | Sync status Repliz |
+| POST | `/api/asisten` | AI chat SSE, rate-limited |
+| GET | `/api/agent/runs` | Audit rows agent_runs |
+| GET | `/api/agent/metrics` | Metrik evaluasi M1–M7 |
 
 ---
 
-## 9. Modul AI (`lib/agent.js`)
+## 7. AI Agent dan Bounded Autonomy
 
-Ekspor utama: `pool`, `aiReadPool`, `agentSessions`, `initAgent()`, `closeAgentPools()`.
+`lib/agent.js` mengekspos `pool`, `aiReadPool`, `agentSessions`, `initAgent()`, `closeAgentPools()`, dan context audit run aktif.
 
-- Framework: `@earendil-works/pi-coding-agent`
-- Model: dari env `AI_MODEL` / `TELEGRAM_AI_MODEL` (fallback chain)
-- Session web: `req.sessionID`; Telegram: `telegram:{chatId}`
-- TTL idle: 4 jam; cleanup tiap 15 menit
-- Init lazy — request pertama bisa lambat
+| Tool | Peran | Guardrail |
+|---|---|---|
+| `db_query` | Baca data `produk`/`pemasaran` | SELECT-only, single table, no JOIN, no multi statement, max 50 rows |
+| `web_search` | Riset tren via Brave | Aktif hanya jika `BRAVE_API_KEY` tersedia |
+| `get_calendar_gaps` | Cari slot jadwal kosong | Read-only calendar helper |
+| `save_content_plan` | Simpan draft/rencana konten | Policy actuator + cap per run |
+| `schedule_content` | Jadwalkan ke Repliz | `AUTONOMY_MODE`, approval, daily cap |
+| `sync_content_status` | Refresh status publikasi | Update status terkontrol |
 
-### Tools
+Mode autonomy: `assistive` (default aman), `supervised` (human-in-loop), `bounded` (aksi dalam batas policy/cap). Config global `AUTONOMY_MODE`; override web/bot/cron tersedia.
 
-**`db_query`** — SELECT-only ke `produk`/`pemasaran` via `aiReadPool`; no JOIN; max 1000 char query, 50 rows.
-
-**`web_search`** — Brave Search API jika `BRAVE_API_KEY` tersedia.
+Audit: `lib/agentRuns.js` mencatat run/tool/plans/error/durasi; `lib/evaluationMetrics.js` menghitung M1–M7; export via `scripts/export-evaluation.mjs`.
 
 ---
 
-## 10. Bot Telegram (`telegram-bot.js`)
+## 8. Pemasaran, Channel, dan Repliz
 
-Telegraf; berbagi `pool` + AI agent dengan web. Access control via `lib/telegramAccess.js`.
+`lib/pemasaran.js` adalah shared business logic untuk web + bot: `savePlansToDb()`, `schedulePlanToChannel()`, alias `schedulePlanToRepliz()`, `syncPlanReplizStatus()`, dan `parseMarketingSchedule()`.
 
-### Role hierarchy
+| Komponen | Peran |
+|---|---|
+| `lib/channels/registry.js` | Register/list channel berdasarkan `ENABLED_CHANNELS` |
+| `lib/channels/threads.js` | Adapter Threads via Repliz account utama |
+| `lib/channels/instagram.js` | Adapter Instagram via `REPLIZ_INSTAGRAM_ACCOUNT_ID` |
+| `lib/channels/prompt.js` | Prompt section channel untuk AI |
+| `lib/repliz.js` | HTTP client Repliz |
+| `lib/web/replizJobs.js` | Background sync dan auto-schedule |
 
-`super_admin` > `operator` > `viewer`
+Repliz menggunakan `REPLIZ_API_KEY`, `REPLIZ_SECRET`, `REPLIZ_ACCOUNT_ID`, `REPLIZ_BASE_URL`; Instagram butuh `ENABLED_CHANNELS=instagram` dan `REPLIZ_INSTAGRAM_ACCOUNT_ID`. Unique index `repliz_schedule_id` mencegah double schedule.
+
+---
+
+## 9. Bot Telegram
+
+Entry point: `telegram-bot.js`; ACL: `lib/telegramAccess.js`; user store: `telegram-users.json`.
 
 | Role | Kemampuan |
 |---|---|
-| `super_admin` | Semua command + `/adduser`, `/removeuser`, `/listusers`, `/ubahstatuskonten`, `/hapuskonten` |
-| `operator` | AI chat, wizards, Repliz schedule/post/sync |
-| `viewer` | Read-only: `/status`, `/listproduk`, `/jadwalkonten`, `/statuskonten` |
-| Semua | `/start`, `/help`, `/whoami` |
+| `super_admin` | Semua command, kelola user, mutasi/delete konten |
+| `operator` | AI chat, wizard produk/konten, Repliz schedule/post/sync |
+| `viewer` | Read-only status, produk, kalender, status konten |
+| Semua | `/start`, `/help`, `/whoami`, `/batal` |
 
-### Command utama
-
-| Command | Min role | Fungsi |
-|---|---|---|
-| `/tambahproduk`, `/buatkonten` | operator | Wizard produk/konten |
-| `/jadwalkan`, `/postnow`, `/retrypost`, `/cekpost` | operator | Repliz scheduling |
-| `/jadwalkonten`, `/statuskonten` | viewer | Kalender & status konten |
-| `/adduser`, `/removeuser`, `/listusers` | super_admin | Kelola allowlist |
-| `/batal` | allowed | Batalkan wizard aktif |
-| *(free text)* | operator | AI chat (rate-limited) |
-| *(photo)* | operator | Upload gambar di wizard (Cloudinary atau lokal) |
-
-Logic pemasaran/Repliz shared dengan web lewat `lib/pemasaran.js` dan `lib/repliz.js`.
+Command penting: `/status`, `/listproduk`, `/jadwalkonten`, `/statuskonten`, `/tambahproduk`, `/buatkonten`, `/jadwalkan`, `/postnow`, `/retrypost`, `/cekpost`, `/ubahstatuskonten`, `/hapuskonten`, `/adduser`, `/removeuser`, `/listusers`. Free text untuk operator masuk AI chat; photo dipakai wizard gambar (Cloudinary atau local upload).
 
 ---
 
-## 11. Frontend Web
+## 10. Database Schema Ringkas
 
-Tidak ada frontend build. Template HTML di `lib/web/views/`:
-
-- `login.js`, `dashboard.js`, `produk.js`, `pemasaran.js`, `asisten.js`
-- `layout.js` — shell + CSS classes
-- `pageInit.js` — `HAMBURGER_BIND_JS` dan binding event shared
-
-Interaksi UI hanya via `addEventListener` di script ber-nonce — tidak boleh inline event handler (CSP `script-src-attr 'none'`).
+```sql
+-- users: id, username, password (bcrypt)
+-- produk: id, nama, harga, stok, gambar, deskripsi, created_at, updated_at
+-- pemasaran: id, judul, strategi, target_audiens, kanal, jadwal, copywriting,
+--   produk_terkait, created_at, gambar, status, scheduled_at, published_at,
+--   external_post_id, external_status, last_error, repliz_schedule_id,
+--   repliz_status, repliz_scheduled_at, repliz_last_error, repliz_synced_at,
+--   repliz_attempts, auto_schedule_enabled
+-- user_sessions: managed by connect-pg-simple
+-- agent_runs: run_id, session_key, source, autonomy_mode, trigger_type,
+--   user_prompt, status, model_ref, tools_called, plans_saved,
+--   plans_scheduled, pemasaran_ids, error_message, started_at, ended_at, duration_ms
+```
 
 ---
 
-## 12. Integrasi Repliz
+## 11. Environment Variable Penting
 
-Status: **implemented** — web UI, API, bot commands, background sync, auto-schedule.
-
-| Komponen | Lokasi |
+| Kategori | Variable |
 |---|---|
-| HTTP client | `lib/repliz.js` |
-| Business logic | `lib/pemasaran.js` (`schedulePlanToRepliz`, `syncPlanReplizStatus`, dll.) |
-| Background jobs | `lib/web/replizJobs.js` — sync interval (`REPLIZ_SYNC_INTERVAL_MS`) + auto-schedule |
-| Web API | `lib/web/routes/api/repliz.js`, `pemasaran.js` |
-| Bot | Handler `/jadwalkan`, `/postnow`, `/retrypost`, `/cekpost` |
-
-Fitur:
-
-- Schedule text/image Threads ke Repliz
-- Bulk schedule web (max 20 id)
-- Retry manual + sync status
-- Polling otomatis status pending/process
-- Auto-schedule rencana dengan `auto_schedule_enabled=true`
-- Double-schedule dicegah via `repliz_schedule_id` unique index
-
-Jika env Repliz kosong, UI/API menampilkan pesan konfigurasi tanpa crash.
+| Core | `NODE_ENV`, `PORT`, `APP_URL`, `SESSION_SECRET` |
+| DB | `DB_*`, `DB_AI_READ_*` |
+| AI | `AI_MODEL`, `AI_MODEL_FALLBACKS`, `TELEGRAM_AI_MODEL*`, `XIAOMI_*`, `BRAVE_API_KEY` |
+| Rate limit | `AI_MESSAGE_MAX_LENGTH`, `WEB_AI_RATE_LIMIT`, `TELEGRAM_AI_RATE_LIMIT`, `*_RATE_WINDOW_MS` |
+| Autonomy | `AUTONOMY_MODE`, `WEB_AUTONOMY_MODE`, `TELEGRAM_AUTONOMY_MODE`, `REQUIRE_APPROVAL`, `MAX_AGENT_*` |
+| Repliz/channel | `ENABLED_CHANNELS`, `REPLIZ_*`, `REPLIZ_INSTAGRAM_ACCOUNT_ID` |
+| Telegram | `TELEGRAM_BOT_TOKEN`/aliases, `TELEGRAM_SUPER_ADMIN_ID`, `TELEGRAM_APPROVAL_NOTIFY_ROLES` |
+| Media | `ALLOWED_IMAGE_HOSTS`, `CLOUDINARY_*` |
+| Jobs | `AUTO_PLAN_*`, `AGENT_RUNS_*` |
 
 ---
 
-## 13. Testing
+## 12. Security Checklist
+
+- CSRF pada mutasi `/api/*` dan `POST /logout`.
+- CSP Helmet + nonce; jangan tambah `onclick`, `onchange`, inline style bebas, atau script tanpa nonce.
+- Upload: multer filter awal + `assertValidImageBuffer()` magic-byte.
+- Gambar eksternal harus lewat `sanitizeImageUrl()`.
+- AI DB gunakan `aiReadPool`; query SELECT-only dan sandboxed.
+- Rate limit login, web AI, Telegram AI.
+- Command Telegram mutasi wajib cek role minimum.
+- Jangan commit `.env`, token bot, key Repliz, secret Cloudinary.
+- Production wajib HTTPS reverse proxy agar cookie `secure` benar.
+
+---
+
+## 13. Testing dan QA
 
 ```bash
-npm test                  # 32 tests — lib modules
-node test/qa-smoke.mjs    # CSP/views/HTTP smoke (server harus jalan untuk bagian HTTP)
+npm test
+npm run test:ci
 node --check server.js
 node --check telegram-bot.js
 ```
 
-Suite `test/`:
-
-- `mediaUrl.test.js`, `imageFile.test.js`, `aiLimits.test.js`, `rateLimit.test.js`
-- `pemasaran.test.js`, `csrfToken.test.js`, `telegramAccess.test.js`
-- `qa-smoke.mjs` — inline handler absence, nonce, live endpoints
+Suite utama mencakup sanitasi media, magic-byte image, AI limits, rate limit, pemasaran/Repliz, channel registry, actuator policy, approval flow, agent runs, evaluation metrics, CSRF token, Telegram ACL, autonomous jobs, dan QA smoke CSP/nonce.
 
 ---
 
-## 14. Gotcha Penting
+## 14. Gotcha dan Konvensi Kontribusi
 
-- Node `>=24` wajib.
-- Web bind `127.0.0.1` — reverse proxy di production.
-- `APP_URL` unset di production → mutasi API 403.
-- `SESSION_SECRET` kosong → auto-random, session hilang saat restart.
-- AI init lazy; session terpisah web vs Telegram.
-- AI tidak menulis DB — create/update via UI atau bot wizards.
-- `DB_AI_READ_*` disarankan di production; tanpa itu `db_query` pakai `DB_USER` (warning startup).
-- Repliz & Cloudinary opsional.
-- `index.html` bukan entry point web.
-
----
-
-## 15. Checklist Operasional
-
-Sebelum production:
-
-- [ ] `NODE_ENV=production`, `SESSION_SECRET` stabil, `APP_URL=https://domain`
-- [ ] Reverse proxy + HTTPS
-- [ ] PostgreSQL reachable; backup rutin
-- [ ] `public/uploads` persistent
-- [ ] `DB_AI_READ_*` user read-only untuk AI
-- [ ] systemd: `socai-node`, `socai-bot`
-- [ ] Monitor `/health`
-- [ ] Backup `telegram-users.json`
+- Gunakan `rtk` saat menjalankan command shell sesuai instruksi project.
+- Node `>=24` wajib; jangan menambahkan build step tanpa alasan kuat.
+- Web hanya listen `127.0.0.1`; expose via reverse proxy.
+- `index.html` root hanya placeholder, bukan entry point Express.
+- UI berada di `lib/web/views/`; event binding harus via `addEventListener` di script nonce.
+- Jangan membuat logic pemasaran ganda di web/bot; taruh di `lib/pemasaran.js` atau `lib/actuator/`.
+- Untuk channel baru, tambahkan adapter di `lib/channels/` dan update prompt/registry/test.
+- Untuk write action AI baru, wajib lewat actuator + policy + audit log.
+- Tambahkan/ubah test saat mengubah security, scheduler, channel, AI tools, atau schema.
 
 ---
 
-## 16. Checklist Security
+## 15. Runbook Operasional Singkat
 
-- Jangan commit `.env`
-- CSRF pada semua mutasi `/api/*` + `POST /logout`
-- `sanitizeImageUrl()` pada field gambar
-- Upload: magic-byte validation
-- `db_query`: SELECT-only sandbox
-- CSP: nonce scripts, no inline handlers/styles
-- Rate limit: login + AI (web & Telegram)
-- HTTPS di production untuk cookie `secure`
+1. Pastikan `.env` production lengkap (`NODE_ENV=production`, `APP_URL`, `SESSION_SECRET`, DB, bot token).
+2. Jalankan startup app agar schema init berjalan; pastikan PostgreSQL dapat diakses.
+3. Setup reverse proxy HTTPS ke `127.0.0.1:3010`.
+4. Jalankan systemd `socai-node.service` dan `socai-bot.service`.
+5. Cek `GET /health?detail=1`.
+6. Cek login web, upload gambar, CRUD produk, CRUD pemasaran.
+7. Jika Repliz aktif, cek `/api/channels` dan `/api/repliz/accounts`.
+8. Cek Telegram `/whoami`, `/status`, command sesuai role.
+9. Monitor `agent_runs`, Repliz errors, dan storage `public/uploads/`.
 
 ---
 
-## 17. Alur Kerja Sub-agent Project
+## 16. Roadmap Maintenance
 
-Ekstensi project-local: `.pi/extensions/subagents.ts`
-
-| Command | Fungsi |
-|---|---|
-| `/wiki` | Dokumentasi codebase |
-| `/analis` | Analisis/rencana/bug |
-| `/worker` | Implementasi |
-| `/qa` | Review hasil |
-| `/security` | Audit keamanan |
-| `/ops` | Deployment/operasional |
-
-```text
-Fitur baru:     /analis -> /worker -> /qa
-Bug:            /analis -> /worker -> /qa
-Dokumentasi:    /wiki
-Audit security: /security -> /worker -> /qa
-Deployment:     /ops
-```
+- Jaga dokumentasi `CODEBASE_WIKI.md`, `AGENTS.md`, `README.md`, `autonomous.md`, dan `evaluasi.md` tetap sinkron.
+- Pertimbangkan migration runner eksplisit jika schema makin kompleks.
+- Pertimbangkan memecah `telegram-bot.js` jika command/wizard bertambah besar.
+- Tambahkan adapter channel baru melalui pola `lib/channels/*` + tests.
+- Perluas metrics dashboard bila kebutuhan penelitian bertambah.
