@@ -55,7 +55,11 @@ const VIEW_SOURCES = [
 for (const viewFile of VIEW_SOURCES) {
   const src = fs.readFileSync(path.join(repoRoot, viewFile), 'utf8');
   check(`${viewFile}: no dynamic innerHTML concat / .message (A5)`, () => {
-    assert.doesNotMatch(src, /\.innerHTML\s*=\s*['"][^'"]*['"]\s*\+/, 'innerHTML di-assign string + ekspresi dinamis');
+    assert.doesNotMatch(
+      src,
+      /\.innerHTML\s*=\s*['"][^'"]*['"]\s*\+/,
+      'innerHTML di-assign string + ekspresi dinamis',
+    );
     assert.doesNotMatch(src, /\.innerHTML\s*=.*\.message/, 'innerHTML memakai .message');
   });
 }
@@ -171,69 +175,70 @@ async function httpCheck(name, fn) {
 
 if (skipHttp) {
   console.log('⊘ HTTP smoke skipped (QA_SKIP_HTTP=1)');
-} else try {
-  const health = await fetch(`${base}/health`);
-  const healthJson = await health.json();
-  await httpCheck('HTTP /health ok', async () => {
-    assert.equal(health.status, 200);
-    assert.equal(healthJson.status, 'ok');
-    assert.equal(healthJson.checks.database.ok, true);
-  });
+} else
+  try {
+    const health = await fetch(`${base}/health`);
+    const healthJson = await health.json();
+    await httpCheck('HTTP /health ok', async () => {
+      assert.equal(health.status, 200);
+      assert.equal(healthJson.status, 'ok');
+      assert.equal(healthJson.checks.database.ok, true);
+    });
 
-  const healthDetail = await fetch(`${base}/health?detail=1`);
-  const healthDetailJson = await healthDetail.json();
-  await httpCheck('HTTP /health?detail=1 autonomy fields', async () => {
-    assert.equal(healthDetail.status, 200);
-    assert.ok('autonomy_mode' in healthDetailJson.checks);
-    assert.ok('agent_runs_ready' in healthDetailJson.checks);
-    assert.ok('autonomous_jobs' in healthDetailJson.checks);
-    assert.equal(typeof healthDetailJson.checks.autonomy_mode, 'string');
-    assert.equal(typeof healthDetailJson.checks.agent_runs_ready, 'boolean');
-    assert.equal(typeof healthDetailJson.checks.autonomous_jobs.auto_plan_cron_interval_ms, 'number');
-    assert.ok(Array.isArray(healthDetailJson.checks.channels));
-    assert.ok(healthDetailJson.checks.channels.some((c) => c.id === 'threads'));
-  });
+    const healthDetail = await fetch(`${base}/health?detail=1`);
+    const healthDetailJson = await healthDetail.json();
+    await httpCheck('HTTP /health?detail=1 autonomy fields', async () => {
+      assert.equal(healthDetail.status, 200);
+      assert.ok('autonomy_mode' in healthDetailJson.checks);
+      assert.ok('agent_runs_ready' in healthDetailJson.checks);
+      assert.ok('autonomous_jobs' in healthDetailJson.checks);
+      assert.equal(typeof healthDetailJson.checks.autonomy_mode, 'string');
+      assert.equal(typeof healthDetailJson.checks.agent_runs_ready, 'boolean');
+      assert.equal(typeof healthDetailJson.checks.autonomous_jobs.auto_plan_cron_interval_ms, 'number');
+      assert.ok(Array.isArray(healthDetailJson.checks.channels));
+      assert.ok(healthDetailJson.checks.channels.some((c) => c.id === 'threads'));
+    });
 
-  const loginGet = await fetch(`${base}/login`);
-  await httpCheck('HTTP GET /login 200 + CSP', async () => {
-    assert.equal(loginGet.status, 200);
-    const csp = loginGet.headers.get('content-security-policy') || '';
-    assert.match(csp, /script-src-attr 'none'/);
-    assert.doesNotMatch(csp, /unsafe-inline/);
-  });
+    const loginGet = await fetch(`${base}/login`);
+    await httpCheck('HTTP GET /login 200 + CSP', async () => {
+      assert.equal(loginGet.status, 200);
+      const csp = loginGet.headers.get('content-security-policy') || '';
+      assert.match(csp, /script-src-attr 'none'/);
+      assert.doesNotMatch(csp, /unsafe-inline/);
+    });
 
-  const asistenUnauth = await fetch(`${base}/asisten`, { redirect: 'manual' });
-  await httpCheck('HTTP GET /asisten unauthenticated', async () => {
-    assert.ok([302, 401].includes(asistenUnauth.status));
-  });
+    const asistenUnauth = await fetch(`${base}/asisten`, { redirect: 'manual' });
+    await httpCheck('HTTP GET /asisten unauthenticated', async () => {
+      assert.ok([302, 401].includes(asistenUnauth.status));
+    });
 
-  const apiNoOrigin = await fetch(`${base}/api/asisten`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ message: 'test' }),
-  });
-  await httpCheck('HTTP POST /api/asisten CSRF blocks missing Origin', async () => {
-    assert.equal(apiNoOrigin.status, 403);
-    const body = await apiNoOrigin.json();
-    assert.match(body.error, /CSRF/i);
-  });
+    const apiNoOrigin = await fetch(`${base}/api/asisten`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ message: 'test' }),
+    });
+    await httpCheck('HTTP POST /api/asisten CSRF blocks missing Origin', async () => {
+      assert.equal(apiNoOrigin.status, 403);
+      const body = await apiNoOrigin.json();
+      assert.match(body.error, /CSRF/i);
+    });
 
-  const apiWithOrigin = await fetch(`${base}/api/asisten`, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      Origin: 'http://127.0.0.1:3010',
-      Referer: 'http://127.0.0.1:3010/asisten',
-    },
-    body: JSON.stringify({ message: 'test' }),
-  });
-  await httpCheck('HTTP POST /api/asisten unauthenticated → 401 not 403', async () => {
-    assert.equal(apiWithOrigin.status, 401);
-  });
-} catch (err) {
-  failed++;
-  console.error(`✘ HTTP smoke (server unreachable?): ${err.message}`);
-}
+    const apiWithOrigin = await fetch(`${base}/api/asisten`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Origin: 'http://127.0.0.1:3010',
+        Referer: 'http://127.0.0.1:3010/asisten',
+      },
+      body: JSON.stringify({ message: 'test' }),
+    });
+    await httpCheck('HTTP POST /api/asisten unauthenticated → 401 not 403', async () => {
+      assert.equal(apiWithOrigin.status, 401);
+    });
+  } catch (err) {
+    failed++;
+    console.error(`✘ HTTP smoke (server unreachable?): ${err.message}`);
+  }
 
 console.log(failed ? `\nQA FAILED (${failed} checks)` : '\nQA PASSED (all checks)');
 process.exit(failed ? 1 : 0);

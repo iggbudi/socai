@@ -26,11 +26,18 @@ function mockContext({ method = 'POST', origin = null, referer = null, extraHead
   let statusCode = null;
   let body = null;
   const res = {
-    status(code) { statusCode = code; return this; },
-    json(payload) { body = payload; },
+    status(code) {
+      statusCode = code;
+      return this;
+    },
+    json(payload) {
+      body = payload;
+    },
   };
   let calledNext = false;
-  const next = () => { calledNext = true; };
+  const next = () => {
+    calledNext = true;
+  };
   return { req, res, next, statusCode: () => statusCode, body: () => body, calledNext: () => calledNext };
 }
 

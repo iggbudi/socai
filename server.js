@@ -46,14 +46,8 @@ async function initPemasaranReplizSchema() {
   `);
 }
 
-const {
-  app,
-  port,
-  trackInterval,
-  intervalHandles,
-  replizSyncIntervalMs,
-  replizAutoScheduleIntervalMs,
-} = createWebApp();
+const { app, port, trackInterval, intervalHandles, replizSyncIntervalMs, replizAutoScheduleIntervalMs } =
+  createWebApp();
 
 let httpServer;
 let shuttingDown = false;
@@ -120,7 +114,9 @@ Promise.all([initPemasaranReplizSchema(), initAgentRunsSchema(pool)])
         try {
           const result = await autoSchedulePendingRepliz();
           if (!result.skipped && (result.scheduled > 0 || result.failed > 0)) {
-            console.log(`[Repliz] Auto schedule done: scheduled=${result.scheduled}, failed=${result.failed}`);
+            console.log(
+              `[Repliz] Auto schedule done: scheduled=${result.scheduled}, failed=${result.failed}`,
+            );
           }
         } catch (err) {
           console.error('[Repliz] Auto schedule error:', err.message);
@@ -130,7 +126,9 @@ Promise.all([initPemasaranReplizSchema(), initAgentRunsSchema(pool)])
       };
       setTimeout(runAutoSchedule, 30_000);
       trackInterval(runAutoSchedule, replizAutoScheduleIntervalMs);
-      console.log(`[Repliz] Auto schedule enabled every ${Math.round(replizAutoScheduleIntervalMs / 1000)}s, limit=${replizAutoScheduleLimit}, lead=${Math.round(replizAutoScheduleLeadMs / 60000)}m`);
+      console.log(
+        `[Repliz] Auto schedule enabled every ${Math.round(replizAutoScheduleIntervalMs / 1000)}s, limit=${replizAutoScheduleLimit}, lead=${Math.round(replizAutoScheduleLeadMs / 60000)}m`,
+      );
     } else {
       console.log('[Repliz] Auto schedule disabled (REPLIZ_AUTO_SCHEDULE_INTERVAL_MS <= 0)');
     }
