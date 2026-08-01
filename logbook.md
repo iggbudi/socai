@@ -452,5 +452,5 @@ Pindahkan modul shared murni (tanpa ketergantungan fitur) ke `lib/shared/`; mula
 ### Commit
 | Commit | Pesan |
 |--------|-------|
-| `(F1)` | `refactor(shared): move pure shared modules to lib/shared/ (vertical slicing F1)` |
+| `dd6f002` | `refactor(shared): move pure shared modules to lib/shared/ (vertical slicing F1)` |
 
