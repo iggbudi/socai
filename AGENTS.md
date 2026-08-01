@@ -26,6 +26,9 @@ npm run bot        # telegram bot (long-polling)
 npm run dev        # both in background (server.js & telegram-bot.js)
 npm test           # automated tests in test/
 npm run test:ci    # unit tests + qa-smoke (no HTTP; used by GitHub Actions)
+npm run test:coverage  # unit tests + coverage report (node --test --experimental-test-coverage)
+npm run lint       # ESLint 9 (flat config, `eslint.config.js`) — dijalankan di CI
+npm run format     # Prettier write (opsional; bukan gate CI)
 npm run eval:export  # export metrik penelitian M1–M7 (JSON)
 ```
 

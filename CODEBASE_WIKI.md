@@ -356,3 +356,4 @@ Rencana & status: `sprint-plan.md` · catatan sesi: `logbook.md` (Sesi 1 Agustus
 | S15 | `74381e4` | Vertical slicing F7: fitur `evaluasi` (metrics + route `/api/agent/metrics` dipisah + view + test) → `lib/features/evaluasi/`; `health` → `lib/web/health.js`; fix bug laten import `listAgentRuns` di agent routes |
 | S16 | `28b3e78` | Vertical slicing F8: fitur `telegram` (access + helpers co-located; bot.js utuh dari monolit 1.364 baris; entry root tipis) → `lib/features/telegram/` |
 | S17 | `acc3c47` | Vertical slicing F9 (final): 2 route web terakhir → fitur (`channels/routes.js`, `pemasaran/routes.js` + Repliz accounts); CI `checkout@v5`/`setup-node@v5`; web shell murni |
+| S18 | `P2` | Prioritas 2 tooling: 3 test background jobs (106 total); ESLint 9 flat config + Prettier (0 error lint, masuk CI); script `test:coverage` — baseline lines 39% / branches 70.6% / funcs 54.2% |

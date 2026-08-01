@@ -711,3 +711,30 @@ root          server.js (thin), telegram-bot.js (thin), scripts/, deploy/, test/
 |--------|-------|
 | `(F9fix)` | `fix(agent): correct dynamic import path in autonomousJobs.js (publish feedback refresh)` |
 
+---
+
+## Prioritas 2 — Tooling Kualitas: Test Background Jobs, ESLint/Prettier, Coverage (1 Agustus 2026, lanjutan)
+
+### 1. Unit test fungsi background jobs (regresi bug laten F9)
+- **Refactor testability kecil**: `runPublishFeedbackRefresh(readPool)` & `runAgentRunsPurge(dbPool)` menerima pool opsional (fallback ke `aiReadPool`/`pool` real — pola sama seperti `shouldGenerateWeeklyPlans`; pemanggil lama tanpa argumen tetap kompatibel).
+- **3 test baru** di `lib/features/agent/test/autonomousJobs.test.js` (mock pool generik): `shouldGenerateWeeklyPlans` (gaps ≥ 1, query dipanggil), `runPublishFeedbackRefresh` (`ok:true`, `total_sampled:0`), `runAgentRunsPurge` (`deleted:3`, `DELETE FROM agent_runs`).
+- Test suite: **103 → 106**, semua hijau. Fungsi yang sebelumnya lolos coverage kini teruji.
+
+### 2. ESLint 9 + Prettier (devDependencies pertama!)
+- `npm install -D eslint@^9 @eslint/js@^9 globals prettier` → **0 vulnerabilities** (`npm audit`).
+- **`eslint.config.js`** (flat config): `js.configs.recommended` + 4 rules dinonaktifkan dengan alasan terdokumentasi (`no-unused-vars` false-positive template literal HTML; `no-empty` pola `catch {}`; `no-useless-escape`/`no-control-regex` untuk regex markdown/parse).
+- **`npm run lint` → 0 error** (langsung hijau, tanpa churn kode).
+- **CI**: `.github/workflows/ci.yml` + `npm run lint` setelah `test:ci`.
+- Prettier: script `npm run format` (write) tersedia, **bukan gate CI** — codebase belum prettier-formatted (churn besar mengubah semua file); dicatat sebagai backlog.
+
+### 3. Coverage baseline
+- `npm run test:coverage` (`node --test --experimental-test-coverage`):
+  - **Lines: 39.0% · Branches: 70.6% · Functions: 54.2%** (106 test).
+  - Line rendah wajar: modul besar tanpa unit test (`lib/features/telegram/bot.js` ~1.270 baris, views HTML, routes dengan DB real). Branch 70% menunjukkan logika keputusan cukup teruji.
+  - Backlog: coverage lines bisa dinaikkan via route-level test dengan mock pool (pola `routes.test.js`).
+
+### Commit
+| Commit | Pesan |
+|--------|-------|
+| `(P2)` | `feat(quality): test background jobs, ESLint 9 + Prettier, coverage script (Prioritas 2)` |
+
