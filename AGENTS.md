@@ -86,6 +86,7 @@ Copy `.env.example` → `.env` before running. Web validates env on startup via 
 | `lib/shared/` | Shared infra per fitur (F0/F1): `db.js`, `wibTime.js`, `rateLimit.js`, `mediaUrl.js`, `imageFile.js`, `html.js`, `repliz.js`, `telegramNotify.js` + co-located test di `lib/shared/test/` |
 | `lib/features/agent/core.js` | AI agent (`@earendil-works/pi-coding-agent`), session map, `initAgent()`, tools `db_query` (SELECT-only), `web_search`, actuator tools (`get_calendar_gaps`, `save_content_plan`, `schedule_content`, `sync_content_status`), active run context exports |
 | `lib/features/agent/runs.js` | Research audit log: `initAgentRunsSchema`, `createAgentRun`, `logToolCall`, `completeAgentRun`, `getAgentRunMetrics`, `listAgentRuns` |
+| `lib/features/agent/routes.js` | SSE `/api/asisten` + `/api/agent/runs`; route registration menerima optional `deps` untuk fake pool/session/auth/limiter pada test |
 | `lib/features/evaluasi/` | Metrik penelitian M1–M7: `metrics.js` (`getEvaluationMetrics()`, `resolveEvaluationPeriod()`), `routes.js` (`/api/agent/metrics`), `view.js` (`evaluasiPage`) |
 | `lib/features/agent/actuator/` | Bounded autonomy layer: `resolveAutonomyMode`, policy checks, wrappers around `lib/features/pemasaran/` write paths |
 | `lib/features/channels/` | Multi-channel adapter: `registry.js`, `threads.js`, `instagram.js`, `getChannel()`, `listChannels()`, `buildChannelsPromptSection()` |
@@ -112,6 +113,8 @@ Copy `.env.example` → `.env` before running. Web validates env on startup via 
 | `lib/web/` | Web app shell murni: `createApp.js` (Express factory), `middleware/` (CSRF, CSP nonce), `routes/` (pages, health), `health.js` |
 
 **Entry points:** `server.js` (thin bootstrap: env validation, schema init, `createWebApp()`, listen, shutdown), `telegram-bot.js` (thin entry → `lib/features/telegram/bot.js`: access control via `access.js` + `telegram-users.json`, wizards, Repliz commands).
+
+**Route testability convention (S21):** feature route registration yang memakai global pool/agent dependency wajib menyediakan optional `deps` dengan default production yang identik; handler SSE/API yang beralur kompleks diekspor sebagai fungsi bernama agar dapat diuji memakai fake pool/session tanpa database, model, atau jaringan.
 
 ## Security (P0+P1 summary)
 

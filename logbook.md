@@ -803,3 +803,27 @@ Menguji penuh gerbang approval yang menentukan apakah agent bounded boleh meneru
 
 ### Commit
 `test(agent): cover approval gate paths, add notify/schedule seams (R1a)`
+
+---
+
+## Sprint 21 — Coverage `agent/routes.js` ≥ 70% + Seam Testability (R1b) (1 Agustus 2026, lanjutan)
+
+### Tujuan
+Menguji route AI SSE dan endpoint agent runs tanpa database, model AI, Telegram, atau jaringan nyata.
+
+### Perubahan
+- **Dependency injection**: `registerAsistenRoutes(app, deps = {})` menerima `dbPool`, `initAgent`, `sessions`, `requireAuth`, limiter, dan timeout dengan default production; `registerAgentRunsRoutes` menerima `dbPool`/`requireAuth`.
+- **Handler SSE**: alur chat diekstrak ke named export `handleAsistenChat`; urutan `res.writeHead`/`res.write` dan pesan init tetap sama.
+- **Test harness**: tambah `lib/features/agent/test/agentRoutes.test.js` memakai Express polos, fake auth, fake pool, fake agent session, limiter terinjeksi, dan server ephemeral.
+- **Coverage paths**: validasi input, SSE headers/init, init error, prompt error, safety timeout, request close/abort, rate-limit 429, agent-runs success dengan limit clamp, dan error 500 tanpa stack trace.
+- **Dokumentasi**: pola DI route feature dicatat di `AGENTS.md`; changelog diperbarui di `CODEBASE_WIKI.md`.
+
+### Verifikasi
+- Targeted `agent/routes.js` → **95,35% line / 76,47% branch / 91,67% funcs**.
+- `npm run test:coverage` → **129/129 pass**, keseluruhan **42,40% line / 72,42% branch / 58,27% funcs**.
+- `npm run test:ci` → **129/129 pass + QA PASSED**.
+- `npm run lint` → **0 error, 0 warning**.
+- Target agregat S21 **46% line** belum tercapai; coverage route dan objective testability tercapai, gap agregat dicatat untuk backlog lintas modul sebelum S22.
+
+### Commit
+`test(agent): inject deps into asisten/runs routes + SSE route tests (R1b)`

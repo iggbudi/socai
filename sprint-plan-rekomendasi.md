@@ -153,27 +153,29 @@ tidak bisa diuji tanpa DB + kunci API. `test/routes.test.js` saat ini hanya menu
 Coverage 17.76% line / 40% funcs.
 
 **Tasks (kode)**
-- [ ] `lib/features/agent/routes.js` — ubah signature jadi
+- [x] `lib/features/agent/routes.js` — ubah signature jadi
       `registerAsistenRoutes(app, deps = {})` dengan destructuring berdefault:
       `const { dbPool = pool, initAgent: initAgentFn = initAgent, sessions = agentSessions, requireAuth = requireLogin } = deps;`
       → `createApp.js` tetap memanggil `registerAsistenRoutes(app)` tanpa perubahan.
-- [ ] Idem `registerAgentRunsRoutes(app, deps = {})` (`dbPool`).
-- [ ] Ekstrak handler SSE ke fungsi bernama (mis. `handleAsistenChat`) agar bisa diuji terpisah
+- [x] Idem `registerAgentRunsRoutes(app, deps = {})` (`dbPool`).
+- [x] Ekstrak handler SSE ke fungsi bernama (mis. `handleAsistenChat`) agar bisa diuji terpisah
       dari wiring express — **tanpa mengubah alur `res.writeHead`/`res.write`**.
 
 **Tasks (test)** — file baru `lib/features/agent/test/agentRoutes.test.js`:
-- [ ] Helper lokal: bangun `express()` polos, `app.use(express.json())`, inject
+- [x] Helper lokal: bangun `express()` polos, `app.use(express.json())`, inject
       `requireAuth: (req,_res,next)=>{ req.session={user:{id:1}}; req.sessionID='t1'; next(); }`
-- [ ] Fake agent session: `{ subscribe(cb){...}, prompt(){...}, abort(){} }` yang meng-emit
+- [x] Fake agent session: `{ subscribe(cb){...}, prompt(){...}, abort(){} }` yang meng-emit
       2 event teks lalu selesai — nol jaringan.
-- [ ] `POST /api/asisten: message kosong/terlalu panjang → 400 JSON (AiMessageError)` ← jalur `normalizeAiMessage`
-- [ ] `POST /api/asisten: header SSE benar (text/event-stream, no-cache)`
-- [ ] `POST /api/asisten: session baru → stream berisi '⏳ Menyiapkan AI agent' lalu '✅ Agent siap'`
-- [ ] `POST /api/asisten: initAgent throw → event type:'error' lalu res.end(), bukan 500`
-- [ ] `POST /api/asisten: rate limiter — request ke-(N+1) dalam window → 429`
+- [x] `POST /api/asisten: message kosong/terlalu panjang → 400 JSON (AiMessageError)` ← jalur `normalizeAiMessage`
+- [x] `POST /api/asisten: header SSE benar (text/event-stream, no-cache)`
+- [x] `POST /api/asisten: session baru → stream berisi '⏳ Menyiapkan AI agent' lalu '✅ Agent siap'`
+- [x] `POST /api/asisten: initAgent throw → event type:'error' lalu res.end(), bukan 500`
+- [x] `POST /api/asisten: rate limiter — request ke-(N+1) dalam window → 429`
       (set `WEB_AI_RATE_LIMIT=2` sebelum import, atau inject limiter)
-- [ ] `GET /api/agent/runs: fake pool → JSON array + limit ter-clamp`
-- [ ] `GET /api/agent/runs: pool throw → 500 JSON { error }`, tidak bocor stack trace
+- [x] `GET /api/agent/runs: fake pool → JSON array + limit ter-clamp`
+- [x] `GET /api/agent/runs: pool throw → 500 JSON { error }`, tidak bocor stack trace
+
+- [x] Tambah seam opsional `rateLimiter` dan `safetyTimeoutMs` agar rate-limit dan timeout SSE dapat diuji deterministik tanpa menunggu 10 menit.
 
 **Verifikasi**
 ```bash
@@ -187,6 +189,10 @@ npm run test:ci
 **Commit**: `test(agent): inject deps into asisten/runs routes + SSE route tests (R1b)`
 
 **DoD**: `agent/routes.js` ≥70% line & ≥80% funcs; coverage keseluruhan naik ke **≥46% line**; CI hijau.
+
+**Hasil aktual (1 Agustus 2026)**: `agent/routes.js` **95,35% line / 76,47% branch / 91,67% funcs**;
+suite menjadi **129 test**; coverage keseluruhan **42,40% line / 72,42% branch / 58,27% funcs**.
+Target coverage route tercapai. Target agregat 46% belum tercapai dan dicatat sebagai backlog coverage lintas modul sebelum gate S22.
 
 **Risiko**: refactor signature route menyentuh jalur chat produksi.
 **Mitigasi**: default parameter identik dengan import lama; verifikasi manual satu request chat di
