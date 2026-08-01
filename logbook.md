@@ -675,5 +675,5 @@ root          server.js (thin), telegram-bot.js (thin), scripts/, deploy/, test/
 ### Commit
 | Commit | Pesan |
 |--------|-------|
-| `(F9)` | `refactor(web): finalize vertical slicing — routes to features, CI v5, release v1.2.0 (F9)` |
+| `acc3c47` | `refactor(web): finalize vertical slicing — routes to features, CI v5 (F9)` |
 
