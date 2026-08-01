@@ -11,7 +11,7 @@ Node.js ESM app for **Batik Bakaran** product & marketing management:
 - **Repliz** — optional multi-channel content scheduling/sync (Threads + Instagram via `lib/features/channels/`)
 - **Cloudinary** — optional image upload from Telegram marketing wizard
 
-> Audit & rencana remediasi sprint: `sprint-plan.md` · catatan sesi: `logbook.md` ·
+> Audit & rencana remediasi sprint: `sprint-plan.md` · backlog pasca-S24: `sprint-plan-backlog.md` · catatan sesi: `logbook.md` ·
 > template deploy: `deploy/` · pengaturan WIB: `lib/shared/wibTime.js` (jadwal selalu +07:00 eksplisit).
 
 No build step, no TypeScript. Node **>=24**. Tests: `npm test` (Node built-in `node:test`)
@@ -119,9 +119,9 @@ Copy `.env.example` → `.env` before running. Web validates env on startup via 
 
 **Route testability convention (S21):** feature route registration yang memakai global pool/agent dependency wajib menyediakan optional `deps` dengan default production yang identik; handler SSE/API yang beralur kompleks diekspor sebagai fungsi bernama agar dapat diuji memakai fake pool/session tanpa database, model, atau jaringan.
 
-**Coverage gate convention (S22):** setelah gate ditetapkan, ambang coverage di `package.json` hanya boleh dinaikkan. Penurunan ambang wajib memiliki alasan tertulis di `logbook.md`; gate saat ini adalah **41% lines / 57% functions / 68% branches**. S22 mencatat pengecualian satu kali dari 58% ke 57% functions karena clean GitHub Actions runner mengukur 57,55% sementara local runner mengukur 57,91–58,27%.
+**Coverage gate convention (S22):** setelah gate ditetapkan, ambang coverage di `package.json` hanya boleh dinaikkan. Penurunan ambang wajib disertai angka pengukuran dan alasan tertulis di `logbook.md`; gate saat ini adalah **41% lines / 57% functions / 68% branches**. S22 mencatat pengecualian satu kali dari 58% ke 57% functions karena clean GitHub Actions runner mengukur 57,55% sementara local runner mengukur 57,91–58,27%. S25 mengukur ulang coverage tiga kali (55,88% / 75,73% / 79,93%) sebagai dasar kenaikan gate berikutnya.
 
-**Telegram testability convention (S23):** `bot.js` hanya factory/startup (201 baris); command wiring ada di `commands.js`, sedangkan logika format/media/wizard/schedule/schema berada di modul terpisah dan menerima dependency yang diperlukan. `botFactory.test.js` memakai fake Telegraf tanpa `launch()`; wiring `commands.js` dikecualikan dari agregat coverage native Node melalui `--test-coverage-exclude`, tetapi daftar command/event/action tetap diverifikasi oleh test.
+**Telegram testability convention (S23/S25):** `bot.js` hanya factory/startup (201 baris); command wiring ada di `commands.js`, sedangkan logika format/media/wizard/schedule/schema berada di modul terpisah dan menerima dependency yang diperlukan. Semua test fitur Telegram harus co-located di `lib/features/telegram/test/` (termasuk test helper/media/wizard); jangan menaruh `*.test.js` di level modul. `botFactory.test.js` memakai fake Telegraf tanpa `launch()`; wiring `commands.js` masih dikecualikan dari agregat coverage native Node sebagai utang sementara sampai S27, tetapi daftar command/event/action tetap diverifikasi oleh test.
 
 **Migration convention (S24):** semua DDL baru wajib masuk ke `migrations/` dan dijalankan eksplisit lewat `npm run migrate:up`; `server.js` dan bot tidak boleh membuat/mengubah tabel saat boot. `migrations.config.js` memetakan `DB_HOST`, `DB_NAME`, `DB_PORT`, `DB_USER`, dan `DB_PASSWORD` tanpa menambah `DATABASE_URL`. `/health` mengembalikan `checks.schema.status` (`ok`/`pending`) dan HTTP 503 bila versi belum terpenuhi.
 

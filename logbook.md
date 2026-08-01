@@ -931,3 +931,23 @@ Migration tidak dipasang sebagai `ExecStartPre` systemd karena user runtime tida
 | Commit | Pesan |
 |--------|-------|
 | `(this commit)` | `feat(db): versioned migrations, remove DDL from boot path (R4)` |
+
+## Sprint 25 — Rapikan Peletakan Test Telegram (B4) (2 Agustus 2026)
+
+### Perubahan
+
+- Memindahkan enam test Telegram yang sebelumnya berada di level modul ke
+  `lib/features/telegram/test/`: helper format/media/schedule/schema serta wizard konten/produk.
+- Menggunakan nama `wizardKonten.test.js` dan `wizardProduk.test.js` agar tidak bentrok dengan
+  implementasi `wizards/`; seluruh import relatif diperbarui.
+- Menetapkan konvensi bahwa seluruh `*.test.js` fitur Telegram harus co-located di direktori
+  `test/` fitur tersebut.
+
+### Verifikasi
+
+- `npm run test:ci` → **145/145 pass + QA PASSED**.
+- `find lib/features -name '*.test.js'` menunjukkan seluruh test fitur berada di direktori `test/`.
+
+### Commit
+
+Commit dilakukan bersama kenaikan gate coverage S25 setelah verifikasi coverage tiga kali.

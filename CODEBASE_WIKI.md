@@ -36,7 +36,7 @@ npm run bot               # bot Telegram long-polling
 npm run dev               # web + bot di background
 npm test                  # unit tests
 npm run test:ci           # unit + qa-smoke tanpa HTTP
-npm run test:coverage     # coverage dengan threshold CI
+npm run test:coverage     # coverage dengan threshold CI (41/57/68)
 npm run lint              # ESLint
 npm run format:check     # Prettier check (CI gate)
 npm run migrate:up       # apply versioned PostgreSQL schema
@@ -239,6 +239,14 @@ Entry point: `telegram-bot.js` (thin → `startBot()`); factory/wiring: `lib/fea
 
 Command penting: `/status`, `/listproduk`, `/jadwalkonten`, `/statuskonten`, `/tambahproduk`, `/buatkonten`, `/jadwalkan`, `/postnow`, `/retrypost`, `/cekpost`, `/ubahstatuskonten`, `/hapuskonten`, `/adduser`, `/removeuser`, `/listusers`. Free text untuk operator masuk AI chat; photo dipakai wizard gambar (Cloudinary atau local upload).
 
+### Konvensi test Telegram
+
+Semua test fitur Telegram wajib berada di `lib/features/telegram/test/`, mengikuti konvensi
+co-located test fitur lain. Test helper, media, schedule, schema, dan wizard tidak diletakkan
+di samping file implementasi; nama wizard memakai prefix (`wizardKonten.test.js`,
+`wizardProduk.test.js`) agar tidak bentrok. Glob `lib/features/**/*.test.js` tetap menangkap
+seluruh suite.
+
 ---
 
 ## 10. Database Schema Ringkas
@@ -372,3 +380,4 @@ Rencana & status: `sprint-plan.md` · catatan sesi: `logbook.md` (Sesi 1 Agustus
 | S22 | `style: apply prettier baseline` + `ci: add format check + coverage thresholds (R2)` + `fix(ci): stabilize coverage function threshold (S22)` | Prettier deterministik, `format:check`, coverage thresholds 41/57/68, dan CI menjadi 4 gate |
 | S23 | `refactor(telegram): split bot factory, commands, wizards, media, schedule, schema (R3)` | Bot tidak lagi self-executing; `bot.js` 201 baris, factory harness fake Telegraf, ekstraksi modul dan unit tests co-located |
 | S24 | `feat(db): versioned migrations, remove DDL from boot path (R4)` | Tambah `node-pg-migrate`, dua baseline migration, schema health guard, dan deploy runbook tanpa DDL runtime |
+| S25-B4 | `(worktree)` | Memindahkan enam test Telegram ke `lib/features/telegram/test/` dan menetapkan konvensi co-location; suite tetap 145 test |
