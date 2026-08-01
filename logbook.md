@@ -738,3 +738,25 @@ root          server.js (thin), telegram-bot.js (thin), scripts/, deploy/, test/
 |--------|-------|
 | `1463039` | `feat(quality): test background jobs, ESLint 9 + Prettier, coverage script (Prioritas 2)` |
 
+---
+
+## Fix A9 Regression — Lockfile Mirror Tencent (1 Agustus 2026, lanjutan)
+
+### Gejala
+- Run CI Prioritas 2 (`30705403143`) **failure** di step `npm ci`: `ENOTFOUND mirrors.tencentyun.com` — package-lock kembali berisi URL mirror lokal server (registry global npm server = `https://mirrors.tencentyun.com/npm`).
+- **A9 terulang** (temuan audit Sprint 0): `npm install -D eslint...` menulis ulang lock dengan URL mirror.
+
+### Fix (2 lapis)
+1. **`.npmrc` project baru**: `registry=https://registry.npmjs.org/` — mencegah npm install berikutnya menulis URL mirror lagi (permanen, bukan sed ulang).
+2. **package-lock.json**: sed `http(s)://mirrors.tencentyun.com/npm` → `https://registry.npmjs.org` (83 URL; versi & integrity tidak berubah — pola S0/`cd43a3a`).
+
+### Verifikasi
+- `grep mirrors.tencentyun.com package-lock.json` → 0; `registry.npmjs.org` → 85.
+- `npm run lint` → 0 error; `npm run test:ci` → 106/106 + QA PASSED.
+- CI run berikutnya memvalidasi `npm ci` dengan registry baru.
+
+### Commit
+| Commit | Pesan |
+|--------|-------|
+| `(A9fix)` | `fix(ci): pin npm registry to registry.npmjs.org via .npmrc (A9 lockfile regression)` |
+
