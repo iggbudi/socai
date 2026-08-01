@@ -1052,3 +1052,75 @@ Commit dilakukan terpisah dari kenaikan gate coverage S25 setelah verifikasi cov
   dengan schema `0002_baseline_agent_runs`; log startup baru tervalidasi sebagai JSON pino dan
   tidak ada field rahasia pada output startup.
 - Commit scoped S28: `4ab6c5b`, `bb88a28`, `e6ddf11`, `5798e3d`, `003e6af`, `bca7da6`, `99296c7`.
+
+## Sprint 29 — Seam DI & Titik Dingin (C1) (2 Agustus 2026)
+
+### Konteks
+
+Verifikasi ulang pasca S28 menunjukkan coverage agregat 80,84% sudah sehat, tetapi delapan
+modul masih di bawah 45% dengan akar masalah yang sama: `pool`, fungsi domain, `sleep`, dan
+`Date.now` di-import di level modul sehingga tidak bisa diuji tanpa database dan jaringan.
+
+### Perubahan
+
+- `lib/shared/telegramNotify.js`: seam `{ api, listUserIds }`, ekstrak `resolveNotifyMinRole`.
+- `lib/features/agent/actuator/schedule.js`: seam `{ schedulePlan, syncPlan }`.
+- `lib/features/pemasaran/jobs.js`: seam `dbPool`, fungsi domain, `sleepFn`, `leadMs`, `nowFn`
+  sehingga cron dapat diuji deterministik tanpa timer nyata.
+- `lib/features/auth/routes.js`: seam `{ dbPool, comparePassword }`.
+- `lib/features/produk/routes.js`, `pemasaran/routes.js`, `evaluasi/routes.js`: seam `dbPool`
+  (pemasaran juga `savePlans`, `schedulePlan`, `syncPlan`, `sleepFn`).
+- Harness baru `test/helpers/webApp.mjs`: `createRouteApp`, `listen`, `fakePool`, dan sesi
+  palsu yang mendukung `regenerate()`/`destroy()`.
+- 73 test perilaku baru; seluruh seam memakai default parameter identik dengan perilaku lama.
+
+### Dua perilaku lama yang dikunci apa adanya (tidak diperbaiki di sprint refactor)
+
+- `resolveNotifyMinRole()` menginisialisasi akumulator `reduce` dengan `'operator'`, sehingga
+  peran yang lebih tinggi tidak pernah menang. `TELEGRAM_APPROVAL_NOTIFY_ROLES=super_admin`
+  tetap menotifikasi operator. → backlog **D4**.
+- `POST /logout` dengan CSRF salah menulis `res.status(403).redirect('/dashboard')`, tetapi
+  `res.redirect()` Express menimpa status menjadi 302; jadi 403-nya mati. Efek keamanannya
+  tetap benar (sesi tidak dihancurkan), hanya status code yang salah. → backlog **D3**.
+
+### Verifikasi
+
+- `npm test` → **282/282 pass** setelah S29 (286 setelah S30 memindahkan test grab-bag).
+- Coverage naik **80,84 → 85,04% lines**, **78,58 → 81,18% branches**, **76,52 → 84,07% functions**.
+- Commit scoped S29: `bb74952`, `62ed876`, `7f99343`, `f67f845`, `b5444d1`.
+
+## Sprint 30 — Rapikan Test Grab-Bag (C2) (2 Agustus 2026)
+
+`test/s27Coverage.test.js` menguji view, adapter kanal, dan runner agent sekaligus dengan nama
+yang menunjuk nomor sprint alih-alih isinya. Dipecah menjadi `lib/web/test/pages.test.js`,
+`lib/features/channels/test/adapters.test.js`, dan `lib/features/agent/test/runner.test.js`.
+Assertion dipindah apa adanya; tidak ada test yang hilang.
+
+- `npm test` → **286/286 pass**. Commit: `819c693`.
+
+## Sprint 31 — Kalibrasi Gate Coverage (C3) (2 Agustus 2026)
+
+### Masalah
+
+Gate 53/73/78 salah kalibrasi di dua arah sekaligus terhadap aktual 85,04/84,07/81,18: ambang
+line tertinggal 32pp sehingga praktis tidak menjaga apa pun, sementara ambang branch hanya
+bermargin 0,58pp sehingga rawan merah palsu. Gate yang berbunyi palsu akan dimatikan orang,
+dan itu lebih berbahaya daripada gate yang longgar.
+
+### Perubahan
+
+Aturan margin ditetapkan sebagai konvensi, bukan angka ad-hoc: **gate = aktual − 3pp,
+dibulatkan ke bawah**.
+
+| | Lama | Baru | Aktual | Margin baru |
+| --- | --- | --- | --- | --- |
+| lines | 53 | **82** | 85,04 | 3,04pp |
+| functions | 73 | **81** | 84,07 | 3,07pp |
+| branches | 78 | **78** | 81,18 | 3,18pp |
+
+### Verifikasi
+
+- Gate final 82/81/78 → `npm run test:coverage` **exit 0**.
+- Verifikasi negatif: gate 99/99/99 → **exit 1**. Gate terbukti bisa merah, bukan sekadar hijau.
+- Empat gate CI: `test:ci` exit 0, `lint` exit 0, `format:check` exit 0, `test:coverage` exit 0.
+- Commit: `7365624`.

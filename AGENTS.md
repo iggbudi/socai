@@ -26,7 +26,7 @@ npm run bot        # telegram bot (long-polling)
 npm run dev        # both in background (server.js & telegram-bot.js)
 npm test           # automated tests in test/
 npm run test:ci    # unit tests + qa-smoke (no HTTP; used by GitHub Actions)
-npm run test:coverage  # unit tests + gated coverage (lines 53 / funcs 73 / branches 78)
+npm run test:coverage  # unit tests + gated coverage (lines 82 / funcs 81 / branches 78)
 npm run lint       # ESLint 9 (flat config, `eslint.config.js`) — dijalankan di CI
 npm run format     # Prettier write (ubah file)
 npm run format:check # Prettier read-only check — gate CI
@@ -120,7 +120,9 @@ Copy `.env.example` → `.env` before running. Web validates env on startup via 
 
 **Route testability convention (S21):** feature route registration yang memakai global pool/agent dependency wajib menyediakan optional `deps` dengan default production yang identik; handler SSE/API yang beralur kompleks diekspor sebagai fungsi bernama agar dapat diuji memakai fake pool/session tanpa database, model, atau jaringan.
 
-**Coverage gate convention (S22/S25):** setelah gate ditetapkan, ambang coverage di `package.json` hanya boleh dinaikkan. Penurunan ambang wajib disertai angka pengukuran dan alasan tertulis di `logbook.md`; gate saat ini adalah **53% lines / 73% functions / 78% branches**. S25 menaikkan gate dari 41/57/68 setelah tiga pengukuran lokal stabil di 55,88% / 75,73% / 79,93%; margin sekitar 2–3pp dipertahankan untuk variance runner.
+**DI seam convention (S29):** modul yang meng-import `pool`, fungsi domain, timer, atau clock di level modul wajib menyediakannya sebagai parameter default (`{ dbPool = pool, sleepFn = sleep, nowFn = Date.now, ... } = {}`) sehingga default produksinya identik dengan perilaku lama. Seam dipasang sebagai refactor murni: **dilarang mengubah logika bisnis pada commit yang sama** — bila seam menyingkap bug, kunci perilaku lama di test dan catat sebagai backlog. Harness bersama untuk route ada di `test/helpers/webApp.mjs` (`createRouteApp`, `listen`, `fakePool`, sesi palsu dengan `regenerate()`/`destroy()`).
+
+**Coverage gate convention (S22/S25/S31):** setelah gate ditetapkan, ambang coverage di `package.json` hanya boleh dinaikkan. Penurunan ambang wajib disertai angka pengukuran dan alasan tertulis di `logbook.md`; gate saat ini adalah **82% lines / 81% functions / 78% branches**. Sejak S31 marginnya mengikuti aturan tetap: **gate = aktual − 3pp, dibulatkan ke bawah** — cukup longgar untuk variance runner bersih, cukup ketat untuk menangkap regresi nyata. Gate baru wajib lulus verifikasi negatif (naikkan sementara ke 99, pastikan exit 1) sebelum di-commit; jangan pernah menurunkan gate untuk menghijaukan CI — perbaiki test-nya.
 
 **Telegram testability convention (S23/S25/S27):** `bot.js` hanya factory/startup (201 baris); `commands.js` sekarang adapter wiring 100 baris, sedangkan command/access/status/product/content/schedule dan handler text/photo/error berada di modul terpisah dengan dependency injection. Semua test fitur Telegram harus co-located di `lib/features/telegram/test/` (termasuk test helper/media/wizard); jangan menaruh `*.test.js` di level modul. `registerAndCapture()` memakai fake Telegraf tanpa polling untuk memanggil full registration maupun handler modul langsung. Exclusion coverage `commands.js` sudah dicabut; no-exclude coverage terakhir **80,61% lines / 78,24% branches / 76,09% functions** (205 test pada pengukuran S27, gate tetap 53/73/78).
 

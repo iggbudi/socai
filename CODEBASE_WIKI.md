@@ -36,7 +36,7 @@ npm run bot               # bot Telegram long-polling
 npm run dev               # web + bot di background
 npm test                  # unit tests
 npm run test:ci           # unit + qa-smoke tanpa HTTP
-npm run test:coverage     # coverage dengan threshold CI (53/73/78)
+npm run test:coverage     # coverage dengan threshold CI (82/81/78)
 npm run lint              # ESLint
 npm run format:check     # Prettier check (CI gate)
 npm run migrate:up       # apply versioned PostgreSQL schema
@@ -244,8 +244,8 @@ Sejak S27, `commands.js` hanya wiring (100 baris); implementasi dikelompokkan ke
 `commands/akses.js`, `status.js`, `produk.js`, `konten.js`, `jadwal.js` dan
 `handlers/text.js`, `photo.js`, `errors.js`. `registerAndCapture()` di
 `test/helpers/telegramCtx.mjs` menangkap handler pada fake Telegraf sehingga test tidak
-meluncurkan polling. Exclusion coverage commands sudah dihapus; pengukuran no-exclude S27
-adalah **80,61% lines / 78,24% branches / 76,09% functions** dengan 205 test.
+meluncurkan polling. Exclusion coverage commands sudah dihapus; pengukuran terbaru (S31)
+adalah **85,04% lines / 81,18% branches / 84,07% functions** dengan 286 test.
 
 ### Konvensi test Telegram
 
@@ -403,3 +403,6 @@ Rencana & status: `sprint-plan.md` · catatan sesi: `logbook.md` (Sesi 1 Agustus
 | S26-B3 | `95be736` | `LATEST_SCHEMA_MIGRATION` diturunkan otomatis dari migration terbaru; fallback unreadable menjadi `unknown` dan ditambah 7 test schema |
 | S27-B2 | `82af759` … `b1c7d21` | Memecah `commands.js` menjadi command/handler modules, menambah capture harness + test per modul, menutup reject callback error, dan mencabut exclusion coverage; no-exclude 80,61/78,24/76,09, commands.js 100 baris |
 | S28-B5 | `4ab6c5b` … `99296c7` | Structured pino JSON logging, redaction, `LOG_LEVEL`, request `X-Request-ID`, Telegram `updateId`/`userId` correlation, migrasi seluruh console non-test, dan no-console lint |
+| S29-C1 | `bb74952` … `b5444d1` | Seam DI + test perilaku untuk 8 titik dingin (telegramNotify, actuator schedule, cron pemasaran, route auth/produk/pemasaran/evaluasi, halaman web); harness `test/helpers/webApp.mjs`; 209 → 282 test |
+| S30-C2 | `819c693` | Memecah `test/s27Coverage.test.js` (dinamai menurut nomor sprint) menjadi test per domain: halaman web, adapter kanal, runner agent |
+| S31-C3 | `7365624` | Kalibrasi gate ke aturan aktual − 3pp: 53/73/78 → 82/81/78; margin branch 0,58pp → 3,18pp; verifikasi negatif 99/99/99 exit 1 |
