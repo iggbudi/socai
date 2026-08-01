@@ -54,11 +54,11 @@ Dokumen ini adalah rencana kerja berbasis sprint untuk menindaklanjuti hasil aud
 **Tujuan**: baseline hijau; repo bersih; dokumen plan ter-commit.
 
 **Tasks**
-- [ ] Review perubahan `CODEBASE_WIKI.md` yang belum di-commit (commit bila valid, revert bila tidak relevan) — terpisah dari commit plan ini
-- [ ] `npm run test:ci` → baseline hijau (77 unit test + QA smoke)
+- [x] Review perubahan `CODEBASE_WIKI.md` yang belum di-commit (commit bila valid, revert bila tidak relevan) — terpisah dari commit plan ini (`c501af5`)
+- [x] `npm run test:ci` → baseline hijau (77 unit test + QA smoke)
 - [x] Buat file ini (`sprint-plan.md`) sebagai docs sprint
 - [x] Fix CI blocker (A9): regenerate `package-lock.json` — ganti 123 URL `http://mirrors.tencentyun.com` → `https://registry.npmjs.org` (versi & integrity tidak berubah); commit terpisah
-- [ ] Commit: `docs: add audit sprint plan (S0 baseline)`
+- [x] Commit: `docs: add audit sprint plan (S0 baseline)` (`6e10946`)
 - [x] Push + verifikasi CI hijau — run pertama gagal (A9), setelah fix lockfile → hijau
 
 **DoD**: CI hijau; `sprint-plan.md` ada di `main`.
@@ -194,11 +194,12 @@ Dokumen ini adalah rencana kerja berbasis sprint untuk menindaklanjuti hasil aud
 **Tujuan**: dokumentasi lengkap & siap deploy; semua temuan tertutup/terdokumentasi.
 
 **Tasks**
-- [ ] Update `AGENTS.md` (env, deploy, test), `README.md` (ops notes, TZ), `CODEBASE_WIKI.md` (changelog S1–S6)
-- [ ] `logbook.md`: retrospective ringkas
-- [ ] Konfirmasi A8: token bot @DBSPresensiBot (disengaja?) & rotasi DB password (ops)
-- [ ] Regression penuh: `npm run test:ci` + smoke curl (login, health, /produk, /pemasaran)
-- [ ] Tag release (opsional, setelah persetujuan): `git tag v1.1.0 && git push --tags`
+- [x] Update `AGENTS.md` (env, deploy, test), `README.md` (ops notes, TZ), `CODEBASE_WIKI.md` (changelog S1–S6)
+- [x] `logbook.md`: retrospective ringkas
+- [x] Konfirmasi A8 — token bot @DBSPresensiBot: **dikonfirmasi sengaja** oleh owner (1 Agustus 2026); tidak perlu diganti
+- [ ] Rotasi `DB_PASSWORD` (ops) — masih pending: rotasi ke random string + update `.env` + restart service + verifikasi user read-only `socai_ai_read`
+- [x] Regression penuh: `npm run test:ci` + smoke curl (login, health, /produk, /pemasaran)
+- [x] Tag release (opsional, setelah persetujuan): `git tag v1.1.0 && git push --tags`
 
 **Commit**: `docs: finalize sprint docs and release notes v1.1.0`
 

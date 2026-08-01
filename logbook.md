@@ -363,9 +363,9 @@ Pindahkan inline styles ke CSS classes agar `style-src` tidak perlu `'unsafe-inl
 - `npm run test:ci`: **103/103 + QA PASSED**.
 - Smoke curl vs server temp (dengan `.env` + DB lokal): health `database ok`, login POST → 200, CSRF spoof → 403, `/produk` & `/pemasaran` → 401 tanpa session.
 
-### A8 — Ops yang butuh keputusan owner (belum dieksekusi)
-- **Token bot Telegram** milik **@DBSPresensiBot** (bukan nama bot "socai") — kemungkinan token lama/dipinjam; konfirmasi ke pemilik & ganti token bila perlu (`.env` → `TELEGRAM_BOT_TOKEN` + restart `socai-bot`).
-- **Rotasi `DB_PASSWORD`** — password berpola nama diri; rotasi ke random string + update `.env` (service restart; pastikan `socai_ai_read` ikut diverifikasi).
+### A8 — Ops (update 1 Agustus 2026)
+- **Token bot Telegram @DBSPresensiBot** — ✅ **dikonfirmasi sengaja** oleh owner (1 Agustus 2026); tidak perlu diganti (`.env` → `TELEGRAM_BOT_TOKEN` dibiarkan).
+- **Rotasi `DB_PASSWORD`** — ⏳ masih pending (ops, menunggu eksekusi owner): password berpola nama diri; rotasi ke random string + update `.env` + restart service + verifikasi user read-only `socai_ai_read`.
 
 ### Retrospective (S0–S7)
 - **Positif**: CI/CD sekarang benar-benar hijau & melindungi regresi (A1/A5/A6 punya test permanen); `npm audit` 0 vuln; jadwal WIB akurat di TZ server apa pun; docs (`sprint-plan.md`, `logbook.md`, `deploy/`) lengkap.
