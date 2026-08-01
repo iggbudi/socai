@@ -639,3 +639,41 @@ Seluruh bot masuk `lib/features/telegram/`; root entry jadi tipis (pola sama den
 |--------|-------|
 | `28b3e78` | `refactor(telegram): move telegram feature to lib/features/ (vertical slicing F8)` |
 
+---
+
+## Vertical Slicing — Fase 9: Cleanup & Finalisasi (1 Agustus 2026, lanjutan)
+
+### Tujuan
+Tutup restrukturisasi: web shell murni, CI modern, release `v1.2.0`.
+
+### Perubahan (kode)
+- **`lib/features/channels/routes.js`** — `registerChannelsRoutes` (`/api/channels`) dari `lib/web/routes/api/channels.js`.
+- **`lib/features/pemasaran/routes.js`** — `registerReplizRoutes` (`/api/repliz/accounts`) **digabung** (pola F4/F5) + import `getReplizAccounts` (shared) & `getChannel` (fitur channels).
+- **`lib/web/routes/api/` kosong** — web shell murni 6 file: `createApp.js`, `health.js`, `middleware/{csp,csrf}.js`, `routes/{health,pages}.js`. `lib/web/views/` sudah kosong sejak F7.
+- **CI**: `actions/checkout@v5` + `actions/setup-node@v5` — deprecation warning Node 20 (muncul sejak F3) hilang.
+- **Importer**: `createApp.js` (import `registerReplizRoutes` digabung ke baris pemasaran; `registerChannelsRoutes` → fitur), `qa-smoke.mjs` (actuatorFiles).
+
+### Struktur final
+```
+lib/shared/   10 modul infra + test/
+lib/features/ channels, auth, dashboard, produk, pemasaran, agent, evaluasi, telegram (8 fitur, semua + test/)
+lib/web/      createApp + middleware/{csrf,csp} + routes/{pages,health} + health.js (shell murni)
+lib/ root     env.js saja (pengecualian terdokumentasi: import features/channels utk CHANNEL_IDS)
+root          server.js (thin), telegram-bot.js (thin), scripts/, deploy/, test/ (route-level + smoke)
+```
+
+### Verifikasi
+- `npm run test:ci` → **103/103 + QA PASSED**.
+- CI GitHub Actions → success (run terakhir di verifikasi via `gh run watch`).
+
+### Retrospective (F0–F9)
+- **9 sprint, 18 commit** (9 refactor + 9 docs), 103 test stabil di setiap fase, CI hijau setiap push.
+- Pola yang berhasil: git mv (rename terdeteksi) → sed presisi → `npm run test:ci` gate → docs → commit scoped → CI.
+- Pelajaran berulang: (1) level path relatif (`lib/features/<fitur>/` = 2× `../`; `test/` = 3×; `actuator/` = 3× utk shared) — 5× terjadi; (2) dynamic import tak match pattern `from '`; (3) modul pengimpor ikut dicek, bukan hanya target; (4) batch shell berurutan wajib satu command chain (race 3×); (5) verifikasi `ls` + jumlah test setelah move.
+- Keputusan penting: `telegram/bot.js` utuh (belum dipecah — menunggu harness test); `env.js` pengecualian terdokumentasi; `index.js` public API per fitur.
+
+### Commit
+| Commit | Pesan |
+|--------|-------|
+| `(F9)` | `refactor(web): finalize vertical slicing — routes to features, CI v5, release v1.2.0 (F9)` |
+

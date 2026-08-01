@@ -83,7 +83,7 @@ const actuatorFiles = [
   'lib/features/channels/threads.js',
   'lib/features/channels/instagram.js',
   'lib/features/channels/prompt.js',
-  'lib/web/routes/api/channels.js',
+  'lib/features/channels/routes.js',
   'lib/features/evaluasi/metrics.js',
   'scripts/export-evaluation.mjs',
 ];

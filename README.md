@@ -58,11 +58,11 @@ socai/
 │   │   └── test/           # Co-located tests (F1)
 │   ├── agent.js            # AI agent, db_query, web_search, sessions
 │   ├── features/           # Vertical slicing (F2–F8)
-│   │   ├── channels/       # Multi-channel adapter
+│   │   ├── channels/       # Multi-channel adapter + routes (/api/channels)
 │   │   ├── auth/           # Login, logout, CSRF, rate limit
 │   │   ├── dashboard/      # Dashboard page
 │   │   ├── produk/         # CRUD produk + upload gambar
-│   │   ├── pemasaran/      # Domain, routes, jobs, view
+│   │   ├── pemasaran/      # Domain, routes (+ Repliz accounts), jobs, view
 │   │   ├── agent/          # AI agent core, tools, actuator
 │   │   ├── evaluasi/       # Metrik riset M1–M7
 │   │   └── telegram/       # Bot: bot.js, helpers, access, test
@@ -71,8 +71,7 @@ socai/
 │   └── web/               # Modul web (refactor Sprint 3)
 │       ├── createApp.js   # Factory Express
 │       ├── middleware/    # csrf, csp
-│       ├── routes/        # pages, health, api/*
-│       └── views/         # HTML templates (nonce CSP)
+│       └── routes/        # pages, health
 ├── test/                  # Unit & smoke tests
 ├── public/uploads/        # Gambar upload lokal
 ├── telegram-users.json    # Allowlist & role bot

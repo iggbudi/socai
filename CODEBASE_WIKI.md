@@ -73,15 +73,15 @@ Catatan:
 │   │   └── test/                      # Co-located tests (wibTime, mediaUrl)
 │   ├── features/
 │   │   ├── agent/                    # Fitur AI agent (F6): core, runner, runs, aiLimits, actuator/, autonomousJobs, approval, publishFeedback, routes (asisten + agent runs), view + test/
-│   │   ├── channels/                 # Adapter channel social media (F2): registry, threads, instagram, prompt + test/
+│   │   ├── channels/                 # Adapter channel social media (F2): registry, threads, instagram, prompt, routes + test/
 │   │   ├── auth/                       # Login/logout, session CSRF, rate limit (F3) + test/
 │   │   ├── dashboard/                  # Dashboard page (F3)
 │   │   ├── produk/                     # CRUD produk + upload (F4): routes, upload, view
-│   │   ├── pemasaran/                  # Domain, routes, jobs, view + test (F5)
+│   │   ├── pemasaran/                  # Domain, routes (+ Repliz accounts, F9), jobs, view + test (F5)
 │   │   ├── evaluasi/                   # Metrik M1–M7 + route /api/agent/metrics + view + test (F7)
 │   │   └── telegram/                   # Fitur bot (F8): bot.js (self-executing), helpers.js, access.js + test/
 │   ├── env.js                        # Validasi env web/bot
-│   ├── web/                            # Express app modular
+│   ├── web/                            # Express shell murni (F9): createApp, middleware/{csrf,csp}, routes/{pages,health}, health.js
 ├── public/uploads/                   # Upload gambar lokal
 └── test/                             # node:test suites + qa-smoke.mjs
 ```
@@ -136,8 +136,7 @@ Prinsip desain:
 | `middleware/csrf.js` | CSRF Origin/Referer untuk mutasi `/api/*` |
 | `routes/pages.js` | Halaman `/dashboard`, `/produk`, `/pemasaran`, `/asisten`, `/evaluasi` |
 | `routes/health.js` | `/health`, optional `?detail=1` |
-| `routes/api/*` | Sisa API: channels, Repliz accounts |
-| `views/*.js` | Template HTML inline; event harus via `addEventListener` ber-nonce |
+| `health.js` | `collectHealthStatus()` — aggregator status lintas fitur |
 | `lib/features/pemasaran/jobs.js` | Poll status Repliz dan auto-schedule plan pending |
 ---
 

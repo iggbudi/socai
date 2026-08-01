@@ -228,6 +228,7 @@ Dokumen ini adalah rencana kerja berbasis sprint untuk menindaklanjuti hasil aud
 | S14 | 1–1.5 hari | Vertical slicing F6: fitur `agent` (core + runner + runs + actuator + jobs + approval + routes + view) → `lib/features/agent/` |
 | S15 | 0.5 hari | Vertical slicing F7: fitur `evaluasi` (metrics + route + view) → `lib/features/evaluasi/`; `health` → `lib/web/health.js` |
 | S16 | 1 hari | Vertical slicing F8: fitur `telegram` — `access` + `helpers` co-located; bot.js utuh dari `telegram-bot.js`; entry root tipis |
+| S17 | 0.5 hari | Vertical slicing F9 (final): 2 route web terakhir → fitur (`channels/routes.js`, `pemasaran/routes.js` + Repliz accounts); CI `checkout@v5`/`setup-node@v5`; release `v1.2.0` |
 | **Total** | **±5–7 hari kerja** | |
 
 ---
@@ -441,5 +442,27 @@ Dokumen ini adalah rencana kerja berbasis sprint untuk menindaklanjuti hasil aud
 **DoD**: tidak ada `lib/telegramAccess.js` & `telegram-bot.js` monolit tersisa; test hijau; CI hijau; verifikasi manual restart `socai-bot` oleh owner.
 
 **Fase berikutnya (rencana F9)**: cleanup & finalisasi — (a) pindahkan 2 route web tersisa (`lib/web/routes/api/channels.js` → `features/channels/routes.js`, `lib/web/routes/api/repliz.js` → `features/pemasaran/routes.js`); (b) upgrade CI actions `checkout@v5`/`setup-node@v5`; (c) finalisasi tree docs + release note `v1.2.0`; (d) opsional: pecah `bot.js` (commands/ + wizards/) setelah harness test bot tersedia.
+
+---
+
+## 24. Sprint 17 — Vertical Slicing F9: Cleanup & Finalisasi (1 Agustus 2026)
+
+**Tujuan**: tutup restrukturisasi — web shell murni, CI modern, release `v1.2.0`.
+
+**Tasks (kode)**
+- [x] `lib/features/channels/routes.js` — `registerChannelsRoutes` (`/api/channels`, dari `lib/web/routes/api/channels.js`)
+- [x] `lib/features/pemasaran/routes.js` — `registerReplizRoutes` **digabung** (`/api/repliz/accounts`, dari `lib/web/routes/api/repliz.js` + import `getReplizAccounts`/`getChannel`)
+- [x] `lib/web/routes/api/` **kosong** — web shell murni: `createApp`, `middleware/{csrf,csp}`, `routes/{pages,health}`, `health.js`
+- [x] CI: `.github/workflows/ci.yml` → `actions/checkout@v5` + `actions/setup-node@v5` (hilangkan deprecation Node 20)
+- [x] Update importer: `createApp.js` (2 import digabung), `qa-smoke.mjs` (actuatorFiles)
+- [x] Verifikasi `npm run test:ci` → 103/103 + QA PASSED
+
+**Docs**: `AGENTS.md`, `README.md`, `CODEBASE_WIKI.md`, `logbook.md` + tag `v1.2.0`
+
+**Commit**: `refactor(web): finalize vertical slicing — routes to features, CI v5, release v1.2.0 (F9)`
+
+**DoD**: `lib/web/routes/api/` & `lib/web/views/` kosong; CI hijau tanpa deprecation warning; tag release.
+
+**Pasca-F9 (opsional)**: pecah `lib/features/telegram/bot.js` (commands/ + wizards/) setelah harness test bot tersedia; tambah `eslint` + coverage tooling (rekomendasi skor).
 
 

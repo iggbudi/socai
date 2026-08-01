@@ -86,7 +86,7 @@ Copy `.env.example` → `.env` before running. Web validates env on startup via 
 | `lib/features/evaluasi/` | Metrik penelitian M1–M7: `metrics.js` (`getEvaluationMetrics()`, `resolveEvaluationPeriod()`), `routes.js` (`/api/agent/metrics`), `view.js` (`evaluasiPage`) |
 | `lib/features/agent/actuator/` | Bounded autonomy layer: `resolveAutonomyMode`, policy checks, wrappers around `lib/features/pemasaran/` write paths |
 | `lib/features/channels/` | Multi-channel adapter: `registry.js`, `threads.js`, `instagram.js`, `getChannel()`, `listChannels()`, `buildChannelsPromptSection()` |
-| `lib/features/` | Vertical slicing: satu folder per fitur (F2: `channels`; F3: `auth` + `dashboard`; F4: `produk`; F5: `pemasaran`; F6: `agent`; F7+: evaluasi, telegram) — domain/API/view/test co-located |
+| `lib/features/` | Vertical slicing selesai (F2–F8): `channels`, `auth`, `dashboard`, `produk`, `pemasaran`, `agent`, `evaluasi`, `telegram` — domain/API/view/test co-located per fitur |
 | `lib/features/pemasaran/` | Shared pemasaran/Repliz logic (web + bot + agent): `domain.js` (`savePlansToDb`, `schedulePlanToChannel` alias `schedulePlanToRepliz`, `syncPlanReplizStatus`, `parseMarketingSchedule`), `routes.js`, `jobs.js` (background Repliz sync/auto-schedule), `view.js` |
 | `lib/shared/mediaUrl.js` | `sanitizeImageUrl()` — HTTPS whitelist, blocks `javascript:`/`data:`/`http://`, allows `/uploads/...` |
 | `lib/shared/imageFile.js` | Magic-byte detection (`jpeg`/`png`/`gif`/`webp`), `assertValidImageBuffer()` |
@@ -106,7 +106,7 @@ Copy `.env.example` → `.env` before running. Web validates env on startup via 
 | `lib/features/agent/autonomousJobs.js` | Weekly plan cron, publish feedback refresh, agent_runs purge |
 | `lib/features/agent/approval.js` | `REQUIRE_APPROVAL` flow + Telegram approve/reject |
 | `lib/features/agent/publishFeedback.js` | Publish outcome cache injected into agent system prompt |
-| `lib/web/` | Web app modules: `createApp.js` (Express factory), `middleware/` (CSRF, CSP nonce), `routes/` (pages + health + API sisa), `views/` (sisa view) |
+| `lib/web/` | Web app shell murni: `createApp.js` (Express factory), `middleware/` (CSRF, CSP nonce), `routes/` (pages, health), `health.js` |
 
 **Entry points:** `server.js` (thin bootstrap: env validation, schema init, `createWebApp()`, listen, shutdown), `telegram-bot.js` (thin entry → `lib/features/telegram/bot.js`: access control via `access.js` + `telegram-users.json`, wizards, Repliz commands).
 
