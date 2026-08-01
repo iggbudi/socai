@@ -250,12 +250,42 @@ Pindahkan inline styles ke CSS classes agar `style-src` tidak perlu `'unsafe-inl
 
 ---
 
+## Sprint 3 — Konsistensi Timezone WIB (+07:00) (A4)
+
+### Temuan Audit
+- Server produksi memakai `Asia/Shanghai (+8)`, sementara logika app mengasumsikan WIB (+7):
+  - `parseMarketingSchedule("5 Juni 2026 jam 19:00")` menghasilkan **18:00 WIB** (salah 1 jam).
+  - Slot `getCalendarGaps` tidak konsisten antara label/scheduled_at vs instant slot → deteksi slot terisi bisa miss (duplikat jadwal).
+
+### Perbaikan
+- **`lib/wibTime.js`** (baru) — helper WIB eksplisit:
+  - `wibDate(y, m, d, hh, mm)` → `Date.UTC(..., hh-7, ...)` (bulan 1-based).
+  - `getWibParts(date)` → komponen WIB via `Intl` `timeZone: 'Asia/Jakarta'`.
+  - `wibSlotKey(date)`, `formatWibScheduledAt(date)` (`+07:00`), `formatWibLabel(date)`.
+- **`lib/pemasaran.js`** — `parseMarketingSchedule`: kedua branch teks (ISO-like & Indonesia) memakai `wibDate` (catatan: `bulanIndonesia` 0-based → +1).
+- **`lib/actuator/calendar.js`** — `getCalendarGaps`: slot dibangun dari komponen WIB (`wibDate(nowWib..., +i, preferredHour)`), `slotKey` = `wibSlotKey` (zona sama untuk parsing & slot), `rangeEnd`/`startToday` berbasis WIB.
+- **Test**: `test/wibTime.test.js` (baru, 9 test) + update `test/pemasaran.test.js` (3 test WIB eksplisit) — total +9.
+
+### Ops / Docs
+- **`deploy/socai-node.service` & `deploy/socai-bot.service`** — template unit systemd dengan `Environment=TZ=Asia/Jakarta`.
+- **`deploy/README.md`** — runbook deploy/update/rollback + contoh vhost Apache (termasuk `RequestHeader unset X-Forwarded-Host` untuk Sprint 5).
+- `AGENTS.md`, `README.md` — catatan TZ & deploy.
+
+### Verifikasi
+- `node --test test/wibTime.test.js test/pemasaran.test.js`: **16/16 pass**.
+- Parsing konsisten di TZ server apa pun (test memakai instant UTC absolut).
+
+### Commit
+| Commit | Pesan |
+|--------|-------|
+| *(tbd)* | fix(schedule): explicit WIB (+07:00) parsing and calendar slots; add deploy units |
+
+---
+
 ## Backlog / Lanjutan
 
 | Prioritas | Item |
 |-----------|------|
-| P2 | Sprint 2: upgrade `pi-coding-agent` → 0.83.0 + `npm audit` bersih (A3) |
-| P2 | Sprint 3: timezone WIB eksplisit + deploy units (A4) |
 | P3 | Sprint 4: escape error dinamis di views (A5) |
 | P3 | Sprint 5: hardening CSRF & trust proxy (A6) |
 | P3 | Sprint 6: perluas `test/routes.test.js` (health, auth guard, CSRF) (A7) |

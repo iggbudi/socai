@@ -1,0 +1,18 @@
+[Unit]
+Description=Socai Telegram Bot
+After=network.target socai-node.service
+
+[Service]
+Type=simple
+WorkingDirectory=/var/www/socai.my.id
+Environment=NODE_ENV=production
+# Wajib: logika jadwal memakai WIB (+07:00) eksplisit (lihat lib/wibTime.js)
+Environment=TZ=Asia/Jakarta
+ExecStart=/home/ubuntu/.nvm/versions/node/v24.14.1/bin/node /var/www/socai.my.id/telegram-bot.js
+Restart=always
+RestartSec=5
+User=ubuntu
+Group=ubuntu
+
+[Install]
+WantedBy=multi-user.target

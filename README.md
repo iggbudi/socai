@@ -624,12 +624,18 @@ node test/qa-smoke.mjs   # Smoke test CSP & HTTP
 
 ### Production (systemd)
 
+Template unit + runbook: `deploy/` (`socai-node.service`, `socai-bot.service`, `README.md`).
+
 ```bash
 sudo systemctl start socai-node socai-bot
 sudo systemctl status socai-node socai-bot
 ```
 
 Web bind `127.0.0.1` — wajib reverse proxy (Nginx) + `APP_URL=https://socai.my.id`.
+
+> **Timezone**: parsing jadwal Indonesia & slot kalender memakai WIB (+07:00) eksplisit
+> (`lib/wibTime.js`, Sprint 3). Set `TZ=Asia/Jakarta` di unit systemd agar tooling lain
+> konsisten; verifikasi deploy via `curl -s http://127.0.0.1:3010/health`.
 
 ---
 

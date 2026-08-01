@@ -110,16 +110,14 @@ Dokumen ini adalah rencana kerja berbasis sprint untuk menindaklanjuti hasil aud
 **Tujuan**: parsing & generasi jadwal eksplisit WIB, tidak bergantung timezone server.
 
 **Tasks (kode)**
-- [ ] Buat helper WIB (mis. `lib/wibTime.js`): konstruksi Date dari komponen lokal WIB
-  (`new Date(Date.UTC(y, m - 1, d, hh - 7, mm))`) dan ekstraksi komponen WIB
-  (`Intl.DateTimeFormat('id-ID', { timeZone: 'Asia/Jakarta', ... })`)
-- [ ] `lib/pemasaran.js` → `parseMarketingSchedule`: teks Indonesia (jam/pukul) di-parse sebagai WIB eksplisit, bukan `new Date(y, m, d, hh, mm)` server-local
-- [ ] `lib/actuator/calendar.js` → `getCalendarGaps`: slot & `slotKey` berbasis komponen WIB; `scheduled_at` konsisten dengan instant slot
-- [ ] Tambah test: `parseMarketingSchedule("5 Juni 2026 jam 19:00")` → `2026-06-05T12:00:00.000Z`; slot 19:00 WIB → `19:00:00+07:00`
+- [x] Buat helper WIB (`lib/wibTime.js`): `wibDate()` (konstruksi via `Date.UTC(y, m-1, d, hh-7, mm)`), `getWibParts()` (`Intl` timeZone `Asia/Jakarta`), `wibSlotKey()`, `formatWibScheduledAt()` (+07:00), `formatWibLabel()` (label Indonesia)
+- [x] `lib/pemasaran.js` → `parseMarketingSchedule`: teks Indonesia (jam/pukul) di-parse sebagai WIB eksplisit (dua branch: ISO-like & teks Indonesia) — bukan server-local
+- [x] `lib/actuator/calendar.js` → `getCalendarGaps`: slot & `slotKey` berbasis komponen WIB; `scheduled_at` = instant yang sama persis dengan slot (`date`)
+- [x] Tambah test: `parseMarketingSchedule("5 Juni 2026 jam 19:00")` → `2026-06-05T12:00:00.000Z`; slot 19:00 WIB → `19:00:00+07:00`; occupied terdeteksi pada instant yang sama → `test/wibTime.test.js` + update `test/pemasaran.test.js`
 
 **Tasks (ops/docs)**
-- [ ] Buat `deploy/socai-node.service` & `deploy/socai-bot.service` (template unit systemd + `Environment=TZ=Asia/Jakarta`) + `deploy/README.md` (runbook deploy)
-- [ ] Update `AGENTS.md` (catatan env TZ), `README.md` (bagian deployment), `logbook.md`
+- [x] Buat `deploy/socai-node.service` & `deploy/socai-bot.service` (template unit systemd + `Environment=TZ=Asia/Jakarta`) + `deploy/README.md` (runbook deploy + contoh vhost Apache dengan `RequestHeader unset X-Forwarded-Host`)
+- [x] Update `AGENTS.md` (catatan env TZ), `README.md` (bagian deployment), `logbook.md`
 
 **Verifikasi**: unit test timezone baru; setelah deploy: parsing & slot benar di server TZ apa pun
 

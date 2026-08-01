@@ -26,6 +26,9 @@ npm run eval:export  # export metrik penelitian M1–M7 (JSON)
 
 **systemd** (production): `socai-node.service` (web), `socai-bot.service` (bot)
 
+> Template unit systemd + runbook ada di `deploy/`. Wajib set `TZ=Asia/Jakarta` di unit
+> (logika jadwal WIB sudah eksplisit via `lib/wibTime.js` — lihat Sprint 3/A4 di `logbook.md`).
+
 Copy `.env.example` → `.env` before running. Web validates env on startup via `validateWebEnvironment()`; bot via `validateBotEnvironment()`.
 
 ## Environment

@@ -13,14 +13,21 @@ describe('parseMarketingSchedule', () => {
     assert.equal(date.toISOString(), '2026-06-05T19:00:00.000Z');
   });
 
-  it('parses Indonesian date text', () => {
+  it('parses Indonesian date text as WIB explicitly (A4)', () => {
     const date = parseMarketingSchedule({ jadwal: '5 Juni 2026 jam 19:00' });
     assert.ok(date instanceof Date);
-    assert.equal(date.getFullYear(), 2026);
-    assert.equal(date.getMonth(), 5);
-    assert.equal(date.getDate(), 5);
-    assert.equal(date.getHours(), 19);
-    assert.equal(date.getMinutes(), 0);
+    // 19:00 WIB = 12:00 UTC — konsisten di server timezone apa pun
+    assert.equal(date.toISOString(), '2026-06-05T12:00:00.000Z');
+  });
+
+  it('parses ISO-like date text with WIB interpretation (A4)', () => {
+    const date = parseMarketingSchedule({ jadwal: '2026-06-05 19:00' });
+    assert.equal(date.toISOString(), '2026-06-05T12:00:00.000Z');
+  });
+
+  it('parses WIB text with time suffix', () => {
+    const date = parseMarketingSchedule({ jadwal: 'Senin, 1 Juni 2026 jam 08:00 WIB' });
+    assert.equal(date.toISOString(), '2026-06-01T01:00:00.000Z');
   });
 
   it('returns null for empty schedule input', () => {
