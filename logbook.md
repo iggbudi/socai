@@ -375,5 +375,5 @@ Pindahkan inline styles ke CSS classes agar `style-src` tidak perlu `'unsafe-inl
 ### Commit & Release
 | Commit | Pesan |
 |--------|-------|
-| *(commit ini)* | docs: finalize sprint docs and release notes v1.1.0 |
+| `67305d1` | docs: finalize sprint docs and release notes v1.1.0 |
 | `v1.1.0` | Tag release pertama pasca-remediasi |
