@@ -86,7 +86,7 @@ Copy `.env.example` → `.env` before running. Web validates env on startup via 
 | `lib/evaluationMetrics.js` | Metrik penelitian M1–M7: `getEvaluationMetrics()`, `resolveEvaluationPeriod()` |
 | `lib/actuator/` | Bounded autonomy layer: `resolveAutonomyMode`, policy checks, wrappers around `pemasaran.js` write paths |
 | `lib/features/channels/` | Multi-channel adapter: `registry.js`, `threads.js`, `instagram.js`, `getChannel()`, `listChannels()`, `buildChannelsPromptSection()` |
-| `lib/features/` | Vertical slicing: satu folder per fitur (F2: `channels`; F3: `auth` + `dashboard`; F4+: produk, pemasaran, agent, telegram) — domain/API/view/test co-located |
+| `lib/features/` | Vertical slicing: satu folder per fitur (F2: `channels`; F3: `auth` + `dashboard`; F4: `produk`; F5+: pemasaran, agent, telegram) — domain/API/view/test co-located |
 | `lib/pemasaran.js` | Shared pemasaran/Repliz logic: `savePlansToDb`, `schedulePlanToChannel` (alias `schedulePlanToRepliz`), `syncPlanReplizStatus`, `parseMarketingSchedule` |
 | `lib/shared/mediaUrl.js` | `sanitizeImageUrl()` — HTTPS whitelist, blocks `javascript:`/`data:`/`http://`, allows `/uploads/...` |
 | `lib/shared/imageFile.js` | Magic-byte detection (`jpeg`/`png`/`gif`/`webp`), `assertValidImageBuffer()` |
@@ -96,6 +96,7 @@ Copy `.env.example` → `.env` before running. Web validates env on startup via 
 | `lib/shared/repliz.js` | Repliz HTTP client, `createThreadsSchedule()`, `getReplizSchedule()`, `isReplizConfigured()` |
 | `lib/features/auth/` | Login/logout, session CSRF, login rate limit: `requireLogin`, `csrfToken` (`generateCsrfToken`, `ensureSessionCsrfToken`, `validateCsrfToken`), `loginRateLimit`, `routes` (login/logout), `view` (`loginPage`) + co-located test |
 | `lib/features/dashboard/` | Halaman dashboard (`dashboardPage`) |
+| `lib/features/produk/` | CRUD produk + upload gambar: `routes.js` (`registerProdukRoutes` + `registerUploadRoutes`), `upload.js` (multer 5MB + magic-byte), `view.js` (`produkPage`) |
 | `lib/telegramAccess.js` | `createTelegramAccess()` — role-based ACL (`super_admin` > `operator` > `viewer`), migrates legacy `allowed_user_ids[]` |
 | `lib/health.js` | `collectHealthStatus()` — DB ping + optional config flags (`?detail=1`) |
 | `lib/agentRuns.js` | `agent_runs` audit log: create/log/complete runs, metrics, purge |

@@ -508,3 +508,27 @@ Fondasi keamanan (login/logout/CSRF/rate limit) masuk pola fitur; dashboard ikut
 |--------|-------|
 | `318a3be` | `refactor(auth): move auth + dashboard features to lib/features/ (vertical slicing F3)` |
 
+---
+
+## Vertical Slicing — Fase 4: Fitur `produk` (1 Agustus 2026, lanjutan)
+
+### Tujuan
+Fitur CRUD + upload gambar keluar dari web shell; `lib/web/middleware/` tinggal shell murni (csrf + csp).
+
+### Perubahan (kode)
+- **`lib/features/produk/`**: `routes.js` — `registerProdukRoutes` (CRUD, dari `routes/api/produk.js`) + `registerUploadRoutes` (dari `routes/api/upload.js`) **digabung dalam satu file** (pola `auth/routes.js`); `upload.js` (multer dari `middleware/upload.js` — path `uploadsDir` `'..','..','..'` tetap valid: `lib/features/produk/` → 3× up = root); `view.js` (`produkPage` — imports `'../../shared/*'` sudah benar dari lokasi baru, tanpa perubahan); `index.js` (public API).
+- **Importer diupdate**: `createApp.js` (2 import → 1 baris dari `features/produk/routes.js`), `pages.js` (`produkPage` → `'../../features/produk/view.js'`), `qa-smoke.mjs` (import + VIEW_SOURCES).
+- `lib/web/middleware/` kini hanya `csp.js` + `csrf.js`; `lib/web/routes/api/` tersisa: pemasaran, repliz, channels, asisten, agentRuns.
+
+### Kendala & pelajaran
+- **`view.js` sempat terlewat dari rantai git mv** (3 file direncanakan, 2 dieksekusi) → qa-smoke import error (1 test gagal) → terdeteksi & diperbaiki. Pelajaran: verifikasi `ls` isi folder target setelah move chain, bukan hanya status exit.
+- `git rm` file hasil `git mv`+`sed` butuh `-f` (staged content berbeda) — dipakai untuk menghapus `uploadRoutes.js` sementara setelah digabung.
+
+### Verifikasi
+- `npm run test:ci` → **103/103 + QA PASSED**.
+
+### Commit
+| Commit | Pesan |
+|--------|-------|
+| `(F4)` | `refactor(produk): move produk feature to lib/features/ (vertical slicing F4)` |
+

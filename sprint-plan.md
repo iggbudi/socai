@@ -223,6 +223,7 @@ Dokumen ini adalah rencana kerja berbasis sprint untuk menindaklanjuti hasil aud
 | S9 | 0.5–1 hari | Vertical slicing F1: 7 modul shared → `lib/shared/` + co-located test |
 | S10 | 0.5 hari | Vertical slicing F2: fitur `channels` → `lib/features/channels/` + co-located test |
 | S11 | 0.5–1 hari | Vertical slicing F3: fitur `auth` + `dashboard` → `lib/features/`; `layout`/`pageInit` → `lib/shared/` |
+| S12 | 0.5 hari | Vertical slicing F4: fitur `produk` (CRUD + upload) → `lib/features/produk/` |
 | **Total** | **±5–7 hari kerja** | |
 
 ---
@@ -327,5 +328,24 @@ Dokumen ini adalah rencana kerja berbasis sprint untuk menindaklanjuti hasil aud
 **DoD**: tidak ada import `middleware/auth.js`, `routes/auth.js`, `views/{login,dashboard,layout,pageInit}.js` tersisa; test hijau; CI hijau.
 
 **Fase berikutnya (rencana F4)**: fitur `produk` — `lib/web/routes/api/produk.js`, `lib/web/views/produk.js`, `lib/web/middleware/upload.js` → `lib/features/produk/`; `qa-smoke.mjs` VIEW_SOURCES diupdate; co-located test `test/produk` (jika ada).
+
+---
+
+## 19. Sprint 12 — Vertical Slicing F4: Fitur `produk` (1 Agustus 2026)
+
+**Tujuan**: fitur CRUD + upload gambar keluar dari web shell; `lib/web/middleware/` tinggal shell murni (csrf + csp).
+
+**Tasks (kode)**
+- [x] `lib/features/produk/`: `routes.js` (`registerProdukRoutes` + `registerUploadRoutes` — **digabung** dari `routes/api/produk.js` + `routes/api/upload.js`), `upload.js` (multer dari `middleware/upload.js`, path uploadsDir tetap valid 3× `..`), `view.js` (`produkPage`, imports `../../shared/*` sudah benar dari lokasi baru) + `index.js`
+- [x] Update importer: `createApp.js` (2 import → 1: `registerProdukRoutes, registerUploadRoutes` dari `features/produk/routes.js`), `pages.js` (`produkPage`), `qa-smoke.mjs` (import + VIEW_SOURCES)
+- [x] Verifikasi `npm run test:ci` → 103/103 + QA PASSED (satu kali gagal: `view.js` belum dipindah → import error → diperbaiki)
+
+**Docs**: `AGENTS.md`, `README.md`, `CODEBASE_WIKI.md`, `logbook.md`
+
+**Commit**: `refactor(produk): move produk feature to lib/features/ (vertical slicing F4)`
+
+**DoD**: tidak ada import `routes/api/{produk,upload}.js`, `middleware/upload.js`, `views/produk.js` tersisa; test hijau; CI hijau.
+
+**Fase berikutnya (rencana F5)**: fitur `pemasaran` (terbesar setelah agent) — `lib/pemasaran.js` (domain: savePlansToDb, parseMarketingSchedule, schedulePlanToChannel, syncPlanReplizStatus) → `lib/features/pemasaran/domain.js`; `lib/web/routes/api/pemasaran.js` → `routes.js`; `lib/web/views/pemasaran.js` → `view.js`; `lib/web/replizJobs.js` (background jobs) → `jobs.js`; importer: agent.js (tools), scheduleApproval, replizJobs, telegram-bot.js, autonomousJobs; co-located test `test/pemasaran.test.js`.
 
 

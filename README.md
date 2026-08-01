@@ -59,15 +59,16 @@ socai/
 │   ├── agent.js            # AI agent, db_query, web_search, sessions
 │   ├── pemasaran.js       # Logik shared pemasaran & Repliz
 │   ├── telegramAccess.js  # Role-based ACL bot
-│   ├── features/           # Vertical slicing (F2/F3)
+│   ├── features/           # Vertical slicing (F2/F3/F4)
 │   │   ├── channels/       # Multi-channel adapter
 │   │   ├── auth/           # Login, logout, CSRF, rate limit
-│   │   └── dashboard/      # Dashboard page
+│   │   ├── dashboard/      # Dashboard page
+│   │   └── produk/         # CRUD produk + upload gambar
 │   ├── health.js          # Health check
 │   └── web/               # Modul web (refactor Sprint 3)
 │       ├── createApp.js   # Factory Express
-│       ├── middleware/    # auth, csrf, csp, rate limit, upload
-│       ├── routes/        # pages, auth, health, api/*
+│       ├── middleware/    # csrf, csp
+│       ├── routes/        # pages, health, api/*
 │       ├── views/         # HTML templates (nonce CSP)
 │       └── replizJobs.js  # Auto sync & auto schedule
 ├── test/                  # Unit & smoke tests
