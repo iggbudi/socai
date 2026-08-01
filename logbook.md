@@ -677,3 +677,37 @@ root          server.js (thin), telegram-bot.js (thin), scripts/, deploy/, test/
 |--------|-------|
 | `acc3c47` | `refactor(web): finalize vertical slicing — routes to features, CI v5 (F9)` |
 
+---
+
+## Verifikasi Produksi Pasca-F9 (1 Agustus 2026, lanjutan) — Prioritas 1
+
+### Restart & status
+- `sudo systemctl restart socai-bot socai-node` → keduanya **active**.
+- **Bot**: log bersih — `✅ Database connected`, `✅ Bot @DBSPresensiBot terhubung (long polling)`, `✅ Telegram bot commands synced` — modul baru `lib/features/telegram/bot.js` load tanpa error.
+- **Web**: `[Repliz] Auto schedule/sync enabled`, `[AgentRuns] Purge enabled`, `socai.my.id listening` — tanpa error.
+
+### E2E smoke (HTTP, tanpa kredensial — non-destruktif)
+| Check | Hasil |
+|---|---|
+| `GET /health` | ✅ 200 `{status:ok, checks.database.ok:true}` |
+| `GET /` | ✅ 302 → `/login` |
+| `GET /login` | ✅ 200 |
+| `GET /api/produk` (no-auth) | ✅ 401 (auth guard) |
+| `GET /api/channels` (no-auth, route baru `features/channels/routes.js`) | ✅ 401 |
+| `GET /api/repliz/accounts` (no-auth, route gabung `features/pemasaran/routes.js`) | ✅ 401 |
+| `POST /login` tanpa body (regresi A1) | ✅ 200 (bukan 500) |
+| `POST /login` kredensial salah | ✅ 200 loginPage (bukan 500) |
+
+### 🐛 BUG LATEN ditemukan & diperbaiki
+- **Gejala**: log node: `[PublishFeedback] Refresh error: Cannot find module 'lib/features/agent/shared/db.js' imported from lib/features/agent/autonomousJobs.js`.
+- **Akar masalah**: di F6a, sed untuk dynamic import `import('./shared/db.js')` di `autonomousJobs.js` **tidak match** — pattern `import\('` (backslash-paren) di sed BRE = grup, bukan literal `(` (pola yang sama pernah gagal di F7 di `runs.js`). File tetap `'./shared/db.js'` yang dari lokasi baru salah level.
+- **Kenapa lolos test**: fungsi dengan dynamic import (`shouldGenerateWeeklyPlans`, `runPublishFeedbackRefresh`, `runAgentRunsPurge`) tidak dipanggil test suite; error di-`catch` sehingga server tetap jalan.
+- **Fix**: `import('./shared/db.js')` → `import('../../shared/db.js')` (3 baris) di `lib/features/agent/autonomousJobs.js`; audit semua `await import('` di codebase → bersih.
+- **Verifikasi**: `npm run test:ci` 103/103 + QA PASSED; restart `socai-node` → log bersih (error hilang).
+- **Pelajaran**: (1) sed dynamic import harus pakai paren literal tanpa backslash; (2) **fungsi yang tidak dipanggil test = risiko laten** — verifikasi produksi (Prioritas 1) justru menangkapnya; saran: tambahkan unit test kecil untuk `runPublishFeedbackRefresh`/`shouldGenerateWeeklyPlans` (mock pool).
+
+### Commit
+| Commit | Pesan |
+|--------|-------|
+| `(F9fix)` | `fix(agent): correct dynamic import path in autonomousJobs.js (publish feedback refresh)` |
+
