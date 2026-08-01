@@ -611,5 +611,5 @@ Metrik riset M1–M7 punya rumah sendiri; `health` masuk web shell.
 ### Commit
 | Commit | Pesan |
 |--------|-------|
-| `(F7)` | `refactor(evaluasi): move evaluasi feature to lib/features/ (vertical slicing F7)` |
+| `74381e4` | `refactor(evaluasi): move evaluasi feature to lib/features/ (vertical slicing F7)` |
 
