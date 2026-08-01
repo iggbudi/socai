@@ -123,7 +123,7 @@ Copy `.env.example` → `.env` before running. Web validates env on startup via 
 
 **Telegram testability convention (S23/S25):** `bot.js` hanya factory/startup (201 baris); command wiring ada di `commands.js`, sedangkan logika format/media/wizard/schedule/schema berada di modul terpisah dan menerima dependency yang diperlukan. Semua test fitur Telegram harus co-located di `lib/features/telegram/test/` (termasuk test helper/media/wizard); jangan menaruh `*.test.js` di level modul. `botFactory.test.js` memakai fake Telegraf tanpa `launch()`; wiring `commands.js` masih dikecualikan dari agregat coverage native Node sebagai utang sementara sampai S27, tetapi daftar command/event/action tetap diverifikasi oleh test.
 
-**Migration convention (S24):** semua DDL baru wajib masuk ke `migrations/` dan dijalankan eksplisit lewat `npm run migrate:up`; `server.js` dan bot tidak boleh membuat/mengubah tabel saat boot. `migrations.config.js` memetakan `DB_HOST`, `DB_NAME`, `DB_PORT`, `DB_USER`, dan `DB_PASSWORD` tanpa menambah `DATABASE_URL`. `/health` mengembalikan `checks.schema.status` (`ok`/`pending`) dan HTTP 503 bila versi belum terpenuhi.
+**Migration convention (S24/S26):** semua DDL baru wajib masuk ke `migrations/` dan dijalankan eksplisit lewat `npm run migrate:up`; `server.js` dan bot tidak boleh membuat/mengubah tabel saat boot. `migrations.config.js` memetakan `DB_HOST`, `DB_NAME`, `DB_PORT`, `DB_USER`, dan `DB_PASSWORD` tanpa menambah `DATABASE_URL`. `lib/shared/schema.js` menurunkan `LATEST_SCHEMA_MIGRATION` dari file `migrations/NNNN_*.js` terbaru saat modul dimuat, jadi menambah migration tidak membutuhkan bump konstanta manual. Jika direktori tidak terbaca, status schema adalah `unknown` (non-throwing). `/health` mengembalikan `checks.schema.status` (`ok`/`pending`/`unknown`) dan HTTP 503 bila versi belum terpenuhi.
 
 ## Security (P0+P1 summary)
 
@@ -172,7 +172,7 @@ Copy `.env.example` → `.env` before running. Web validates env on startup via 
 | GET | `/evaluasi` | Yes | Research metrics dashboard (M1–M7) |
 | POST | `/logout` | Yes | Destroy session + agent (CSRF `_csrf` required) |
 | GET | `/logout` | No | Redirect → `/dashboard` (legacy bookmark) |
-| GET | `/health` | No | Health JSON; `checks.schema.status` is `ok`/`pending` |
+| GET | `/health` | No | Health JSON; `checks.schema.status` is `ok`/`pending`/`unknown` |
 
 ### Web API (`/api/*` — CSRF on POST/PUT/DELETE)
 

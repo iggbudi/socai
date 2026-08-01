@@ -146,22 +146,22 @@ selamanya meski DB sudah benar. Arah gagalnya **aman** (tidak pernah false-ok), 
 alarm palsu yang lama-lama diabaikan — dan alarm yang diabaikan sama saja dengan tidak ada alarm.
 
 **Tasks (kode)**
-- [ ] `lib/shared/schema.js` — ganti konstanta dengan pembacaan direktori sekali saat modul dimuat:
+- [x] `lib/shared/schema.js` — ganti konstanta dengan pembacaan direktori sekali saat modul dimuat:
       baca `migrations/`, filter `/^\d{4}_.*\.js$/`, urutkan, ambil terakhir, buang ekstensi.
       Pertahankan ekspor `LATEST_SCHEMA_MIGRATION` agar `health.js` tidak berubah.
-- [ ] Fallback aman: bila direktori tidak terbaca (mis. paket deploy tanpa `migrations/`),
+- [x] Fallback aman: bila direktori tidak terbaca (mis. paket deploy tanpa `migrations/`),
       kembalikan `null` dan laporkan `schema.status: 'unknown'` — **jangan** lempar error yang
       menjatuhkan `/health`.
-- [ ] Perbandingan tetap eksak (`latestMigration === requiredMigration`) — jangan longgarkan jadi `>=`.
+- [x] Perbandingan tetap eksak (`latestMigration === requiredMigration`) — jangan longgarkan jadi `>=`.
 
 **Tasks (test)** — `lib/shared/test/schema.test.js` (baru):
-- [ ] `LATEST_SCHEMA_MIGRATION mengikuti file terbaru di migrations/` → assert `0002_baseline_agent_runs` hari ini
-- [ ] `getSchemaStatus: pool null → error 'Database pool not provided', ok false`
-- [ ] `getSchemaStatus: fake pool mengembalikan migrasi terbaru → ok true, status 'ok'`
-- [ ] `getSchemaStatus: fake pool mengembalikan migrasi lama → ok false, status 'pending'`
-- [ ] `getSchemaStatus: pool throw err.code '42P01' → pesan 'Migration table pgmigrations belum ada'`
-- [ ] `getSchemaStatus: pool throw error lain → pesan error diteruskan, tidak dilempar`
-- [ ] `direktori migrations/ tidak ada → status 'unknown', tidak throw`
+- [x] `LATEST_SCHEMA_MIGRATION mengikuti file terbaru di migrations/` → assert `0002_baseline_agent_runs` hari ini
+- [x] `getSchemaStatus: pool null → error 'Database pool not provided', ok false`
+- [x] `getSchemaStatus: fake pool mengembalikan migrasi terbaru → ok true, status 'ok'`
+- [x] `getSchemaStatus: fake pool mengembalikan migrasi lama → ok false, status 'pending'`
+- [x] `getSchemaStatus: pool throw err.code '42P01' → pesan 'Migration table pgmigrations belum ada'`
+- [x] `getSchemaStatus: pool throw error lain → pesan error diteruskan, tidak dilempar`
+- [x] `direktori migrations/ tidak ada → status 'unknown', tidak throw`
 
 **Verifikasi**
 ```bash

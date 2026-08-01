@@ -77,9 +77,9 @@ Catatan:
 │   │   ├── mediaUrl.js                # Sanitasi URL gambar
 │   │   ├── imageFile.js               # Magic-byte image validation
 │   │   ├── html.js                    # escapeHtml
-│   │   ├── schema.js                   # Migration version/status guard
+│   │   ├── schema.js                   # Migration version/status guard (latest dari migrations/)
 │   │   ├── telegramNotify.js          # Notifikasi Telegram
-│   │   └── test/                      # Co-located tests (wibTime, mediaUrl)
+│   │   └── test/                      # Co-located tests (wibTime, mediaUrl, schema)
 │   ├── features/
 │   │   ├── agent/                    # Fitur AI agent (F6): core, runner, runs, aiLimits, actuator/, autonomousJobs, approval, publishFeedback, routes (asisten + agent runs), view + test/
 │   │   ├── channels/                 # Adapter channel social media (F2): registry, threads, instagram, prompt, routes + test/
@@ -164,7 +164,7 @@ Prinsip desain:
 | GET | `/evaluasi` | Yes | Dashboard metrik M1–M7 |
 | POST | `/logout` | Yes | Destroy session + agent; CSRF `_csrf` |
 | GET | `/logout` | No | Redirect legacy ke `/dashboard` |
-| GET | `/health` | No | Health JSON; `checks.schema.status` = `ok`/`pending` |
+| GET | `/health` | No | Health JSON; `checks.schema.status` = `ok`/`pending`/`unknown` |
 
 ### API
 
@@ -328,7 +328,7 @@ Suite utama mencakup sanitasi media, magic-byte image, AI limits, rate limit, pe
 ## 15. Runbook Operasional Singkat
 
 1. Pastikan `.env` production lengkap (`NODE_ENV=production`, `APP_URL`, `SESSION_SECRET`, DB, bot token).
-2. Jalankan startup app agar schema init berjalan; pastikan PostgreSQL dapat diakses.
+2. Jalankan `npm run migrate:up` bila ada migration baru; versi schema `/health` diturunkan otomatis dari file terbaru di `migrations/`.
 3. Setup reverse proxy HTTPS ke `127.0.0.1:3010`.
 4. Jalankan systemd `socai-node.service` dan `socai-bot.service`.
 5. Cek `GET /health?detail=1`.
@@ -382,3 +382,4 @@ Rencana & status: `sprint-plan.md` · catatan sesi: `logbook.md` (Sesi 1 Agustus
 | S24 | `feat(db): versioned migrations, remove DDL from boot path (R4)` | Tambah `node-pg-migrate`, dua baseline migration, schema health guard, dan deploy runbook tanpa DDL runtime |
 | S25-B4 | `ef2aba0` | Memindahkan enam test Telegram ke `lib/features/telegram/test/` dan menetapkan konvensi co-location; suite tetap 145 test |
 | S25-B1 | `(this commit)` | Menaikkan gate coverage native Node menjadi 53/73/78 setelah tiga pengukuran stabil; negative threshold check terbukti exit 1 |
+| S26-B3 | `(this commit)` | `LATEST_SCHEMA_MIGRATION` diturunkan otomatis dari migration terbaru; fallback unreadable menjadi `unknown` dan ditambah 7 test schema |

@@ -973,3 +973,30 @@ Commit dilakukan terpisah dari kenaikan gate coverage S25 setelah verifikasi cov
 ### Commit
 
 `ci: raise coverage gate to 53/73/78 (B1)`
+
+## Sprint 26 — Versi Skema Diturunkan dari `migrations/` (B3) (2 Agustus 2026)
+
+### Perubahan
+
+- Mengganti konstanta migration hardcoded di `lib/shared/schema.js` dengan pembacaan direktori
+  `migrations/` saat modul dimuat; hanya file `NNNN_*.js` yang diurutkan dan dipakai.
+- Mempertahankan export `LATEST_SCHEMA_MIGRATION` dan perbandingan eksak, sehingga `health.js`
+  tidak perlu berubah dan migration baru otomatis menjadi required version.
+- Menambahkan fallback non-throwing: direktori yang tidak terbaca menghasilkan `requiredMigration: null`
+  dan `status: 'unknown'`.
+- Menambahkan tujuh test co-located untuk latest migration, pool/error paths, exact pending check,
+  dan direktori migration yang hilang.
+
+### Verifikasi
+
+- `node --test lib/shared/test/schema.test.js` → **7/7 pass**.
+- `npm run test:ci` → **152/152 pass + QA PASSED**.
+- `npm run lint` → exit 0; `npm run format:check` → lulus setelah format test baru.
+- `npm run test:coverage` → lulus gate **53/73/78**, coverage agregat **56,26% line /
+  80,33% branch / 76,10% functions**.
+- Regresi file sementara: `migrations/0003_dummy.js` membuat import baru membaca `0003_dummy`,
+  lalu setelah file dihapus kembali ke `0002_baseline_agent_runs` tanpa perubahan kode.
+
+### Commit
+
+`refactor(db): derive latest schema version from migrations dir (B3)`

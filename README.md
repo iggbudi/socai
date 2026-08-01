@@ -634,8 +634,9 @@ npm run migrate:up       # apply pending migrations
 npm run migrate:down     # rollback satu migration (maintenance/rollback)
 ```
 
-`/health` melaporkan `checks.schema.status` (`ok` atau `pending`) dan
-mengembalikan HTTP 503 bila versi migration belum terpenuhi.
+`/health` melaporkan `checks.schema.status` (`ok`, `pending`, atau `unknown`); versi
+terbaru diturunkan otomatis dari file `migrations/NNNN_*.js` saat modul schema dimuat.
+HTTP 503 dikembalikan bila versi migration belum terpenuhi.
 
 ### Setup database read-only (disarankan)
 
