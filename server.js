@@ -1,6 +1,7 @@
 import 'dotenv/config';
 import { validateWebEnvironment } from './lib/env.js';
 import { closeAgentPools } from './lib/shared/db.js';
+import { childLogger } from './lib/shared/logger.js';
 import { agentSessions, agentSessionLastUsed, agentSessionPromises } from './lib/features/agent/core.js';
 import { createWebApp } from './lib/web/createApp.js';
 import {
@@ -18,6 +19,7 @@ import {
 } from './lib/features/agent/autonomousJobs.js';
 
 validateWebEnvironment();
+const log = childLogger('server');
 
 const { app, port, trackInterval, intervalHandles, replizSyncIntervalMs, replizAutoScheduleIntervalMs } =
   createWebApp();
@@ -28,7 +30,7 @@ let shuttingDown = false;
 function shutdown(signal) {
   if (shuttingDown) return;
   shuttingDown = true;
-  console.log(`[Server] ${signal} received, shutting down gracefully...`);
+  log.info({ signal }, 'Shutdown signal received; shutting down gracefully');
 
   for (const id of intervalHandles) {
     clearInterval(id);
@@ -44,7 +46,7 @@ function shutdown(signal) {
   }
 
   const forceExit = setTimeout(() => {
-    console.error('[Server] Force exit after timeout');
+    log.error('Force exit after timeout');
     process.exit(1);
   }, 10_000);
   forceExit.unref?.();
@@ -52,11 +54,11 @@ function shutdown(signal) {
   const finishShutdown = () => {
     closeAgentPools()
       .then(() => {
-        console.log('[Server] Shutdown complete');
+        log.info('Shutdown complete');
         process.exit(0);
       })
       .catch((err) => {
-        console.error('[Server] closeAgentPools error:', err.message);
+        log.error({ err }, 'closeAgentPools error');
         process.exit(1);
       });
   };
@@ -75,7 +77,7 @@ process.once('SIGINT', () => shutdown('SIGINT'));
 process.once('SIGTERM', () => shutdown('SIGTERM'));
 
 httpServer = app.listen(port, '127.0.0.1', () => {
-  console.log(`socai.my.id listening on http://127.0.0.1:${port}`);
+  log.info({ port, host: '127.0.0.1' }, 'socai.my.id listening');
   if (Number.isFinite(replizAutoScheduleIntervalMs) && replizAutoScheduleIntervalMs > 0) {
     let autoScheduleRunning = false;
     const runAutoSchedule = async () => {
@@ -84,34 +86,39 @@ httpServer = app.listen(port, '127.0.0.1', () => {
       try {
         const result = await autoSchedulePendingRepliz();
         if (!result.skipped && (result.scheduled > 0 || result.failed > 0)) {
-          console.log(`[Repliz] Auto schedule done: scheduled=${result.scheduled}, failed=${result.failed}`);
+          log.info({ scheduled: result.scheduled, failed: result.failed }, 'Repliz auto schedule complete');
         }
       } catch (err) {
-        console.error('[Repliz] Auto schedule error:', err.message);
+        log.error({ err }, 'Repliz auto schedule error');
       } finally {
         autoScheduleRunning = false;
       }
     };
     setTimeout(runAutoSchedule, 30_000);
     trackInterval(runAutoSchedule, replizAutoScheduleIntervalMs);
-    console.log(
-      `[Repliz] Auto schedule enabled every ${Math.round(replizAutoScheduleIntervalMs / 1000)}s, limit=${replizAutoScheduleLimit}, lead=${Math.round(replizAutoScheduleLeadMs / 60000)}m`,
+    log.info(
+      {
+        intervalMs: replizAutoScheduleIntervalMs,
+        limit: replizAutoScheduleLimit,
+        leadMs: replizAutoScheduleLeadMs,
+      },
+      'Repliz auto schedule enabled',
     );
   } else {
-    console.log('[Repliz] Auto schedule disabled (REPLIZ_AUTO_SCHEDULE_INTERVAL_MS <= 0)');
+    log.info('Repliz auto schedule disabled');
   }
 
   if (Number.isFinite(replizSyncIntervalMs) && replizSyncIntervalMs > 0) {
     trackInterval(() => {
-      syncPendingReplizStatuses().catch((err) => console.error('[Repliz] Auto sync error:', err.message));
+      syncPendingReplizStatuses().catch((err) => log.error({ err }, 'Repliz auto sync error'));
     }, replizSyncIntervalMs);
-    console.log(`[Repliz] Auto sync enabled every ${Math.round(replizSyncIntervalMs / 1000)}s`);
+    log.info({ intervalMs: replizSyncIntervalMs }, 'Repliz auto sync enabled');
   } else {
-    console.log('[Repliz] Auto sync disabled (REPLIZ_SYNC_INTERVAL_MS <= 0)');
+    log.info('Repliz auto sync disabled');
   }
 
   runPublishFeedbackRefresh().catch((err) => {
-    console.error('[PublishFeedback] Initial refresh error:', err.message);
+    log.error({ err }, 'Initial publish feedback refresh error');
   });
 
   if (Number.isFinite(autoPlanCronIntervalMs) && autoPlanCronIntervalMs > 0) {
@@ -122,30 +129,33 @@ httpServer = app.listen(port, '127.0.0.1', () => {
       try {
         const result = await generateWeeklyPlans();
         if (!result.skipped) {
-          console.log(`[AutoPlan] Cron done: gaps=${result.gapCount}, textLen=${result.textLength || 0}`);
+          log.info(
+            { gapCount: result.gapCount, textLength: result.textLength || 0 },
+            'AutoPlan cron complete',
+          );
         }
       } catch (err) {
-        console.error('[AutoPlan] Cron error:', err.message);
+        log.error({ err }, 'AutoPlan cron error');
       } finally {
         autoPlanRunning = false;
       }
     };
     setTimeout(runAutoPlan, 60_000);
     trackInterval(runAutoPlan, autoPlanCronIntervalMs);
-    console.log(`[AutoPlan] Weekly plan cron enabled every ${Math.round(autoPlanCronIntervalMs / 1000)}s`);
+    log.info({ intervalMs: autoPlanCronIntervalMs }, 'Weekly plan cron enabled');
   } else {
-    console.log('[AutoPlan] Weekly plan cron disabled (AUTO_PLAN_CRON_INTERVAL_MS <= 0)');
+    log.info('Weekly plan cron disabled');
   }
 
   if (Number.isFinite(agentRunsPurgeIntervalMs) && agentRunsPurgeIntervalMs > 0) {
     const runPurge = async () => {
       const result = await runAgentRunsPurge();
       if (result.deleted > 0) {
-        console.log(`[AgentRuns] Purge cycle removed ${result.deleted} rows`);
+        log.info({ deleted: result.deleted }, 'Agent runs purge cycle complete');
       }
     };
     setTimeout(runPurge, 120_000);
     trackInterval(runPurge, agentRunsPurgeIntervalMs);
-    console.log(`[AgentRuns] Purge enabled every ${Math.round(agentRunsPurgeIntervalMs / 1000)}s`);
+    log.info({ intervalMs: agentRunsPurgeIntervalMs }, 'Agent runs purge enabled');
   }
 });

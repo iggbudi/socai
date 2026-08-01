@@ -100,3 +100,13 @@ test('GET /login → 200 halaman login (A7)', async () => {
   const html = await res.text();
   assert.match(html, /Login/i);
 });
+
+test('setiap request web mendapat X-Request-ID UUID (S28)', async () => {
+  const first = await fetch(`${base}/login`);
+  const second = await fetch(`${base}/login`);
+  const firstId = first.headers.get('x-request-id');
+  const secondId = second.headers.get('x-request-id');
+  assert.match(firstId || '', /^[0-9a-f-]{36}$/i);
+  assert.match(secondId || '', /^[0-9a-f-]{36}$/i);
+  assert.notEqual(firstId, secondId);
+});
