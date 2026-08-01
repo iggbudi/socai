@@ -47,6 +47,7 @@ Copy `.env.example` → `.env` before running. Web validates env on startup via 
 | Variable | Purpose |
 |----------|---------|
 | `NODE_ENV` | `production` enables secure cookies, stricter env checks |
+| `LOG_LEVEL` | Structured pino log level: `trace`, `debug`, `info`, `warn`, `error`, or `fatal` (default `info`) |
 | `APP_URL` | Production origin for CSRF checks (e.g. `https://socai.my.id`) |
 | `SESSION_SECRET` | Express session secret; required in production |
 | `TELEGRAM_SUPER_ADMIN_ID` | Telegram user ID with full bot access + `/adduser` |
@@ -86,7 +87,7 @@ Copy `.env.example` → `.env` before running. Web validates env on startup via 
 | Module | Role |
 |--------|------|
 | `lib/shared/db.js` | PostgreSQL pools (shared infra): `pool` (write), `aiReadPool` (read-only untuk AI `db_query`), `closeAgentPools()` — tanpa import dari `lib/features/` |
-| `lib/shared/` | Shared infra per fitur (F0/F1): `db.js`, `schema.js`, `wibTime.js`, `rateLimit.js`, `mediaUrl.js`, `imageFile.js`, `html.js`, `repliz.js`, `telegramNotify.js` + co-located test di `lib/shared/test/` |
+| `lib/shared/` | Shared infra per fitur (F0/F1): `db.js`, `schema.js`, `wibTime.js`, `rateLimit.js`, `mediaUrl.js`, `imageFile.js`, `html.js`, `repliz.js`, `telegramNotify.js`, `logger.js` + co-located test di `lib/shared/test/` |
 | `lib/features/agent/core.js` | AI agent (`@earendil-works/pi-coding-agent`), session map, `initAgent()`, tools `db_query` (SELECT-only), `web_search`, actuator tools (`get_calendar_gaps`, `save_content_plan`, `schedule_content`, `sync_content_status`), active run context exports |
 | `lib/features/agent/runs.js` | Research audit log: `initAgentRunsSchema`, `createAgentRun`, `logToolCall`, `completeAgentRun`, `getAgentRunMetrics`, `listAgentRuns` |
 | `lib/features/agent/routes.js` | SSE `/api/asisten` + `/api/agent/runs`; route registration menerima optional `deps` untuk fake pool/session/auth/limiter pada test |
@@ -105,7 +106,7 @@ Copy `.env.example` → `.env` before running. Web validates env on startup via 
 | `lib/features/dashboard/` | Halaman dashboard (`dashboardPage`) |
 | `lib/features/produk/` | CRUD produk + upload gambar: `routes.js` (`registerProdukRoutes` + `registerUploadRoutes`), `upload.js` (multer 5MB + magic-byte), `view.js` (`produkPage`) |
 | `lib/features/telegram/access.js` | `createTelegramAccess()` — role-based ACL (`super_admin` > `operator` > `viewer`), migrates legacy `allowed_user_ids[]` |
-| `lib/features/telegram/` | Fitur bot (F8/S23): `bot.js` (`createBot`, `startBot` tanpa auto-launch), `commands.js` (wiring Telegraf), `helpers/format.js`, `media/cloudinary.js`, `wizards/`, `schedule.js`, `schema.js`, `helpers.js`, `access.js`, `test/` |
+| `lib/features/telegram/` | Fitur bot (F8/S23/S27): `bot.js` (`createBot`, `startBot` tanpa auto-launch), `commands.js` (wiring <150 baris), `commands/{akses,status,produk,konten,jadwal}.js`, `handlers/{text,photo,errors}.js`, `helpers/format.js`, `media/cloudinary.js`, `wizards/`, `schedule.js`, `schema.js`, `helpers.js`, `access.js`, `test/` |
 | `lib/web/health.js` | `collectHealthStatus()` — DB ping, migration guard (`checks.schema`), + optional config flags (`?detail=1`) |
 | `lib/features/agent/runs.js` | `agent_runs` audit log: create/log/complete runs, metrics, purge |
 | `lib/features/agent/actuator/` | Bounded actuator tools + `AUTONOMY_MODE` policy |
@@ -121,7 +122,9 @@ Copy `.env.example` → `.env` before running. Web validates env on startup via 
 
 **Coverage gate convention (S22/S25):** setelah gate ditetapkan, ambang coverage di `package.json` hanya boleh dinaikkan. Penurunan ambang wajib disertai angka pengukuran dan alasan tertulis di `logbook.md`; gate saat ini adalah **53% lines / 73% functions / 78% branches**. S25 menaikkan gate dari 41/57/68 setelah tiga pengukuran lokal stabil di 55,88% / 75,73% / 79,93%; margin sekitar 2–3pp dipertahankan untuk variance runner.
 
-**Telegram testability convention (S23/S25):** `bot.js` hanya factory/startup (201 baris); command wiring ada di `commands.js`, sedangkan logika format/media/wizard/schedule/schema berada di modul terpisah dan menerima dependency yang diperlukan. Semua test fitur Telegram harus co-located di `lib/features/telegram/test/` (termasuk test helper/media/wizard); jangan menaruh `*.test.js` di level modul. `botFactory.test.js` memakai fake Telegraf tanpa `launch()`; wiring `commands.js` masih dikecualikan dari agregat coverage native Node sebagai utang sementara sampai S27, tetapi daftar command/event/action tetap diverifikasi oleh test.
+**Telegram testability convention (S23/S25/S27):** `bot.js` hanya factory/startup (201 baris); `commands.js` sekarang adapter wiring 100 baris, sedangkan command/access/status/product/content/schedule dan handler text/photo/error berada di modul terpisah dengan dependency injection. Semua test fitur Telegram harus co-located di `lib/features/telegram/test/` (termasuk test helper/media/wizard); jangan menaruh `*.test.js` di level modul. `registerAndCapture()` memakai fake Telegraf tanpa polling untuk memanggil handler langsung. Exclusion coverage `commands.js` sudah dicabut; no-exclude coverage terakhir **80,61% lines / 78,24% branches / 76,09% functions** (204 test pada pengukuran S27, gate tetap 53/73/78).
+
+**Structured logging convention (S28):** gunakan `logger`/`childLogger(scope)` dari `lib/shared/logger.js`, bukan `console.*` di `lib/`. Route log harus memakai `requestLogger(req, scope)` agar `requestId` dari middleware `X-Request-ID`/`res.locals` ikut tercatat. Handler Telegram memakai `telegramLogger(ctx, scope)` untuk field korelasi `updateId` dan `userId`; jangan log password, token, authorization, atau cookie mentah. `LOG_LEVEL` divalidasi saat startup dan output production berupa JSON untuk journald.
 
 **Migration convention (S24/S26):** semua DDL baru wajib masuk ke `migrations/` dan dijalankan eksplisit lewat `npm run migrate:up`; `server.js` dan bot tidak boleh membuat/mengubah tabel saat boot. `migrations.config.js` memetakan `DB_HOST`, `DB_NAME`, `DB_PORT`, `DB_USER`, dan `DB_PASSWORD` tanpa menambah `DATABASE_URL`. `lib/shared/schema.js` menurunkan `LATEST_SCHEMA_MIGRATION` dari file `migrations/NNNN_*.js` terbaru saat modul dimuat, jadi menambah migration tidak membutuhkan bump konstanta manual. Jika direktori tidak terbaca, status schema adalah `unknown` (non-throwing). `/health` mengembalikan `checks.schema.status` (`ok`/`pending`/`unknown`) dan HTTP 503 bila versi belum terpenuhi.
 

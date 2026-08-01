@@ -9,6 +9,7 @@ Template unit systemd untuk web (`socai-node.service`) dan bot Telegram
 - Node.js `>=24` (disarankan via nvm — sesuaikan path di `ExecStart`).
 - PostgreSQL berjalan; kredensial di `.env` (jangan commit).
 - `NODE_ENV=production` + `SESSION_SECRET` + `APP_URL` wajib diisi di `.env`.
+- `LOG_LEVEL=info` (atau `trace|debug|warn|error|fatal`) mengatur structured logging pino.
 - `node-pg-migrate` terpasang melalui `npm ci`; koneksi migration memakai `DB_HOST`,
   `DB_NAME`, `DB_PORT`, `DB_USER`, dan `DB_PASSWORD` dari `.env`.
 
@@ -42,8 +43,17 @@ curl -s -o /dev/null -w '%{http_code}\n' \
 #   → 200 (bukan 500)
 
 # Log
-journalctl -u socai-node -n 50 --no-pager
-journalctl -u socai-bot -n 50 --no-pager
+journalctl -u socai-node -n 50 -o json --no-pager \
+  | jq -c 'select((.MESSAGE // "") | startswith("{")) | (.MESSAGE | fromjson)'
+journalctl -u socai-bot -n 50 -o json --no-pager \
+  | jq -c 'select((.MESSAGE // "") | startswith("{")) | (.MESSAGE | fromjson)'
+# Request/Telegram correlation
+journalctl -u socai-node -n 100 -o json --no-pager \
+  | jq -c 'select((.MESSAGE // "") | startswith("{")) | (.MESSAGE | fromjson) | select(.requestId != null)'
+journalctl -u socai-bot -n 100 -o json --no-pager \
+  | jq -c 'select((.MESSAGE // "") | startswith("{")) | (.MESSAGE | fromjson) | select(.updateId != null)'
+# Secret fields must be redacted
+journalctl -u socai-node -n 100 --no-pager | grep -iE 'password|token|authorization|cookie' || true
 ```
 
 ## Update / Restart

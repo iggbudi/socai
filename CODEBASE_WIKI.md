@@ -79,6 +79,7 @@ Catatan:
 │   │   ├── html.js                    # escapeHtml
 │   │   ├── schema.js                   # Migration version/status guard (latest dari migrations/)
 │   │   ├── telegramNotify.js          # Notifikasi Telegram
+│   │   ├── logger.js                   # Pino JSON logger + redaction/correlation
 │   │   └── test/                      # Co-located tests (wibTime, mediaUrl, schema)
 │   ├── features/
 │   │   ├── agent/                    # Fitur AI agent (F6): core, runner, runs, aiLimits, actuator/, autonomousJobs, approval, publishFeedback, routes (asisten + agent runs), view + test/
@@ -88,7 +89,7 @@ Catatan:
 │   │   ├── produk/                     # CRUD produk + upload (F4): routes, upload, view
 │   │   ├── pemasaran/                  # Domain, routes (+ Repliz accounts, F9), jobs, view + test (F5)
 │   │   ├── evaluasi/                   # Metrik M1–M7 + route /api/agent/metrics + view + test (F7)
-│   │   └── telegram/                   # Fitur bot (F8/S23): factory, commands, wizards, media, schedule, schema + test/
+│   │   └── telegram/                   # Fitur bot (F8/S23/S27): factory, commands/, handlers/, wizards/, media, schedule, schema + test/
 │   ├── env.js                        # Validasi env web/bot
 │   ├── web/                            # Express shell murni (F9): createApp, middleware/{csrf,csp}, routes/{pages,health}, health.js
 ├── public/uploads/                   # Upload gambar lokal
@@ -239,6 +240,13 @@ Entry point: `telegram-bot.js` (thin → `startBot()`); factory/wiring: `lib/fea
 
 Command penting: `/status`, `/listproduk`, `/jadwalkonten`, `/statuskonten`, `/tambahproduk`, `/buatkonten`, `/jadwalkan`, `/postnow`, `/retrypost`, `/cekpost`, `/ubahstatuskonten`, `/hapuskonten`, `/adduser`, `/removeuser`, `/listusers`. Free text untuk operator masuk AI chat; photo dipakai wizard gambar (Cloudinary atau local upload).
 
+Sejak S27, `commands.js` hanya wiring (100 baris); implementasi dikelompokkan ke
+`commands/akses.js`, `status.js`, `produk.js`, `konten.js`, `jadwal.js` dan
+`handlers/text.js`, `photo.js`, `errors.js`. `registerAndCapture()` di
+`test/helpers/telegramCtx.mjs` menangkap handler pada fake Telegraf sehingga test tidak
+meluncurkan polling. Exclusion coverage commands sudah dihapus; pengukuran no-exclude S27
+adalah **80,61% lines / 78,24% branches / 76,09% functions** dengan 204 test.
+
 ### Konvensi test Telegram
 
 Semua test fitur Telegram wajib berada di `lib/features/telegram/test/`, mengikuti konvensi
@@ -246,6 +254,15 @@ co-located test fitur lain. Test helper, media, schedule, schema, dan wizard tid
 di samping file implementasi; nama wizard memakai prefix (`wizardKonten.test.js`,
 `wizardProduk.test.js`) agar tidak bentrok. Glob `lib/features/**/*.test.js` tetap menangkap
 seluruh suite.
+
+### Observability dan correlation
+
+`lib/shared/logger.js` membuat logger pino JSON dengan redaksi field rahasia. Middleware web
+membuat UUID baru per request, menyimpannya di `res.locals.requestId`, dan mengirim header
+`X-Request-ID`; `requestLogger(req, scope)` menyertakan id tersebut pada error/diagnostic route.
+Handler Telegram memakai `telegramLogger(ctx, scope)` dengan `updateId` dan `userId`.
+`no-console` aktif untuk `lib/**` (kecuali test); gunakan child logger untuk cron, boot, dan
+background job. Output journald dapat difilter dengan `jq`.
 
 ---
 
@@ -278,6 +295,7 @@ seluruh suite.
 | Autonomy | `AUTONOMY_MODE`, `WEB_AUTONOMY_MODE`, `TELEGRAM_AUTONOMY_MODE`, `REQUIRE_APPROVAL`, `MAX_AGENT_*` |
 | Repliz/channel | `ENABLED_CHANNELS`, `REPLIZ_*`, `REPLIZ_INSTAGRAM_ACCOUNT_ID` |
 | Telegram | `TELEGRAM_BOT_TOKEN`/aliases, `TELEGRAM_SUPER_ADMIN_ID`, `TELEGRAM_APPROVAL_NOTIFY_ROLES` |
+| Observability | `LOG_LEVEL` (`trace`–`fatal`, default `info`) |
 | Media | `ALLOWED_IMAGE_HOSTS`, `CLOUDINARY_*` |
 | Jobs | `AUTO_PLAN_*`, `AGENT_RUNS_*` |
 
@@ -381,5 +399,7 @@ Rencana & status: `sprint-plan.md` · catatan sesi: `logbook.md` (Sesi 1 Agustus
 | S23 | `refactor(telegram): split bot factory, commands, wizards, media, schedule, schema (R3)` | Bot tidak lagi self-executing; `bot.js` 201 baris, factory harness fake Telegraf, ekstraksi modul dan unit tests co-located |
 | S24 | `feat(db): versioned migrations, remove DDL from boot path (R4)` | Tambah `node-pg-migrate`, dua baseline migration, schema health guard, dan deploy runbook tanpa DDL runtime |
 | S25-B4 | `ef2aba0` | Memindahkan enam test Telegram ke `lib/features/telegram/test/` dan menetapkan konvensi co-location; suite tetap 145 test |
-| S25-B1 | `(this commit)` | Menaikkan gate coverage native Node menjadi 53/73/78 setelah tiga pengukuran stabil; negative threshold check terbukti exit 1 |
-| S26-B3 | `(this commit)` | `LATEST_SCHEMA_MIGRATION` diturunkan otomatis dari migration terbaru; fallback unreadable menjadi `unknown` dan ditambah 7 test schema |
+| S25-B1 | `39a1e8f` | Menaikkan gate coverage native Node menjadi 53/73/78 setelah tiga pengukuran stabil; negative threshold check terbukti exit 1 |
+| S26-B3 | `95be736` | `LATEST_SCHEMA_MIGRATION` diturunkan otomatis dari migration terbaru; fallback unreadable menjadi `unknown` dan ditambah 7 test schema |
+| S27-B2 | `82af759` … `d28907c` | Memecah `commands.js` menjadi command/handler modules, menambah capture harness + test per modul, menutup reject callback error, dan mencabut exclusion coverage; no-exclude 80,61/78,24/76,09, commands.js 100 baris |
+| S28-B5 | `4ab6c5b` … `99296c7` | Structured pino JSON logging, redaction, `LOG_LEVEL`, request `X-Request-ID`, Telegram `updateId`/`userId` correlation, migrasi seluruh console non-test, dan no-console lint |

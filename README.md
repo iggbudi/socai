@@ -58,6 +58,7 @@ socai/
 │   │   ├── html.js         # escapeHtml
 │   │   ├── schema.js       # Migration version/status guard
 │   │   ├── telegramNotify.js  # Notifikasi Telegram
+│   │   ├── logger.js       # Pino JSON logger + redaction/correlation helpers
 │   │   └── test/           # Co-located tests (F1)
 │   ├── agent.js            # AI agent, db_query, web_search, sessions
 │   ├── features/           # Vertical slicing (F2–F8)
@@ -68,7 +69,7 @@ socai/
 │   │   ├── pemasaran/      # Domain, routes (+ Repliz accounts), jobs, view
 │   │   ├── agent/          # AI agent core, tools, actuator
 │   │   ├── evaluasi/       # Metrik riset M1–M7
-│   │   └── telegram/       # Bot factory/commands, wizards, media, schedule, schema, tests (S23)
+│   │   └── telegram/       # Bot factory + commands/{...} + handlers/{...}, wizards, media, tests (S27)
 │   ├── env.js             # Validasi env web/bot
 │   ├── health.js          # Health check
 │   └── web/               # Modul web (refactor Sprint 3)
@@ -679,6 +680,23 @@ Web bind `127.0.0.1` — wajib reverse proxy (Nginx) + `APP_URL=https://socai.my
 > (`lib/shared/wibTime.js`, Sprint 3). Set `TZ=Asia/Jakarta` di unit systemd agar tooling lain
 > konsisten; verifikasi deploy via `curl -s http://127.0.0.1:3010/health`.
 
+### Structured logging (S28)
+
+Log production memakai pino JSON. Set `LOG_LEVEL` bila perlu (`info` default); setiap request
+web mendapat `X-Request-ID`, sedangkan log handler Telegram membawa `updateId` dan `userId`.
+
+```bash
+journalctl -u socai-node -n 100 -o json --no-pager \
+  | jq -c 'select((.MESSAGE // "") | startswith("{")) | (.MESSAGE | fromjson)
+          | select(.scope == "web.request" or .requestId != null)'
+journalctl -u socai-bot -n 100 -o json --no-pager \
+  | jq -c 'select((.MESSAGE // "") | startswith("{")) | (.MESSAGE | fromjson)
+          | select(.updateId != null)'
+```
+
+Field rahasia (`password`, `token`, `authorization`, `cookie`) otomatis direduksi menjadi
+`[REDACTED]`. Jangan mengembalikan `console.*` ke `lib/`; gunakan helper logger sesuai konteks.
+
 ---
 
 ## Variabel Lingkungan Penting
@@ -694,6 +712,7 @@ Lihat `.env.example` untuk daftar lengkap. Ringkasan:
 | `XIAOMI_API_KEY` | Provider Xiaomi MiMo |
 | `BRAVE_API_KEY` | Tool `web_search` |
 | `TELEGRAM_BOT_TOKEN` | Token bot |
+| `LOG_LEVEL` | Level log JSON pino (`trace`–`fatal`, default `info`) |
 | `TELEGRAM_SUPER_ADMIN_ID` | Super admin bot |
 | `REPLIZ_*` | Integrasi Threads scheduling |
 | `CLOUDINARY_*` | Upload gambar dari Telegram |

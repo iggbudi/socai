@@ -1000,3 +1000,55 @@ Commit dilakukan terpisah dari kenaikan gate coverage S25 setelah verifikasi cov
 ### Commit
 
 `refactor(db): derive latest schema version from migrations dir (B3)`
+
+## Sprint 27 — Pecah `commands.js` & Cabut Pengecualian Coverage (B2) (2 Agustus 2026)
+
+### Perubahan
+
+- Memperluas `test/helpers/telegramCtx.mjs` dengan fake callback/message methods dan
+  `registerAndCapture()` untuk menangkap middleware, command, action, event, dan error handler
+  tanpa polling Telegraf.
+- Mengekstrak `commands.js` ke `commands/{akses,status,produk,konten,jadwal}.js` serta
+  `handlers/{text,photo,errors}.js`; `commands.js` tersisa sebagai wiring dependency-injected
+  dan berukuran **100 baris**.
+- Menambah test co-located untuk ACL, command status/produk/konten/jadwal, wizard flows, media,
+  lifecycle bot, text/AI, photo fallback/error, callback approve/reject, Repliz client/channel,
+  evaluation metrics, environment validation, dan view/runner seams.
+- Error callback reject untuk rencana 404 dikirim ke `answerCbQuery` agar operator mendapat
+  pesan penyebab yang actionable.
+- Menghapus `--test-coverage-exclude=lib/features/telegram/commands.js` dari `package.json`;
+  gate tetap **53/73/78**.
+
+### Verifikasi
+
+- `npm test` → **204/204 pass** pada pengukuran no-exclude S27.
+- No-exclude coverage → **80,61% lines / 78,24% branches / 76,09% functions**; seluruh bar
+  sprint (≥53% line / ≥73% functions, branch gate 78%) terpenuhi.
+- `wc -l lib/features/telegram/commands.js` → **100**; package tidak lagi memiliki exclusion.
+- Commit scoped S27: `82af759`, `ea67ae7`, `5580766`, `53f741a`, `3cee137`, `63701a1`,
+  `688f509`, `f013be8`, `3094f8e`, `6ce2a41`, `d28907c`.
+
+## Sprint 28 — Structured Logging (B5) (2 Agustus 2026)
+
+### Perubahan
+
+- Menambahkan dependency runtime `pino` dan `lib/shared/logger.js`: root logger, child scope,
+  redaksi `password`/`token`/`TELEGRAM_BOT_TOKEN`/`authorization`/`cookie`, validasi level,
+  `requestLogger`, dan `telegramLogger`.
+- Menambahkan validasi `LOG_LEVEL` serta contoh env; middleware web membuat UUID baru per request,
+  menyimpan `res.locals.requestId`, dan mengirim `X-Request-ID`.
+- Migrasi semua `console.*` non-test di `lib/` dan `server.js` ke structured logs. Log route
+  membawa request correlation; Telegram membawa `updateId` dan `userId`; ESLint `no-console`
+  aktif untuk `lib/**` di luar test.
+- Menambah test redaction/correlation dan regresi header request ID.
+
+### Verifikasi
+
+- `npm test` → **208/208 pass**.
+- `npm run test:coverage` → lulus gate **53/73/78**; tiga eksekusi berturut-turut identik:
+  **80,84% lines / 78,58% branches / 76,52% functions**.
+- `npm run lint` → exit 0; `grep` non-test `console.*` di `lib/` → **0**.
+- Restart `socai-node` + `socai-bot` sukses; keduanya `active`, `/health` production `status: ok`
+  dengan schema `0002_baseline_agent_runs`; log startup baru tervalidasi sebagai JSON pino dan
+  tidak ada field rahasia pada output startup.
+- Commit scoped S28: `4ab6c5b`, `bb88a28`, `e6ddf11`, `5798e3d`, `003e6af`, `bca7da6`, `99296c7`.
