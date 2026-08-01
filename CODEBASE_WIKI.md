@@ -354,3 +354,4 @@ Rencana & status: `sprint-plan.md` · catatan sesi: `logbook.md` (Sesi 1 Agustus
 | S11 | `318a3be` | Vertical slicing F3: fitur `auth` (requireLogin, csrfToken, loginRateLimit, routes, view, test) + `dashboard` → `lib/features/`; `layout`/`pageInit` → `lib/shared/`; 7 route API + createApp + pages + qa-smoke diupdate |
 | S12 | `6b803f6` | Vertical slicing F4: fitur `produk` (CRUD + upload, 2 route digabung) → `lib/features/produk/`; createApp/pages/qa-smoke diupdate |
 | S13 | `5c2e04f` | Vertical slicing F5: fitur `pemasaran` (domain 297 baris + routes + jobs + view + test) → `lib/features/pemasaran/`; 10 importer diupdate; `lib/web/replizJobs.js` dihapus |
+| S14 | `b6a5e78` | Vertical slicing F6: fitur `agent` (12 modul + 2 route API digabung + view) → `lib/features/agent/`; 6 test co-located; createApp/server/telegram-bot/health/qa-smoke diupdate |

@@ -586,5 +586,5 @@ Fitur terbesar dipindah + `lib/agent.js` (539 baris) dipecah; web shell tersisa 
 ### Commit
 | Commit | Pesan |
 |--------|-------|
-| `(F6)` | `refactor(agent): move agent feature to lib/features/ (vertical slicing F6)` |
+| `b6a5e78` | `refactor(agent): move agent feature to lib/features/ (vertical slicing F6)` |
 
