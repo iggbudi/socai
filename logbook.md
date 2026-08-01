@@ -613,3 +613,29 @@ Metrik riset M1–M7 punya rumah sendiri; `health` masuk web shell.
 |--------|-------|
 | `74381e4` | `refactor(evaluasi): move evaluasi feature to lib/features/ (vertical slicing F7)` |
 
+---
+
+## Vertical Slicing — Fase 8: Fitur `telegram` (1 Agustus 2026, lanjutan)
+
+### Tujuan
+Seluruh bot masuk `lib/features/telegram/`; root entry jadi tipis (pola sama dengan `server.js`).
+
+### Perubahan (kode)
+- **`lib/features/telegram/`**: `access.js` (dari `lib/telegramAccess.js`), `helpers.js` (`safeReply`, `replyLong`, `markdownToTelegramHtml`, `escapeTelegramHtml` — diekstrak dari bot, fungsi murni yang bisa diuji tanpa bot), `bot.js` (**dipindah utuh** dari `telegram-bot.js` 1.364 baris — nol perubahan logika, self-executing), `index.js` (public API access + helpers; **tidak** re-export `bot.js` karena self-executing — mencegah import tak sengaja yang me-launch bot), `test/telegramAccess.test.js` co-located.
+- **`telegram-bot.js` root → 5 baris** entry tipis: `import './lib/features/telegram/bot.js'`.
+- **`__dirname` fix**: `UPLOAD_DIR` (`public/uploads`) & `TELEGRAM_USERS_FILE` (`telegram-users.json`) → `'..','..','..'` dari `lib/features/telegram/` ke repo root.
+- **`lib/shared/telegramNotify.js`** import ACL → `'../features/telegram/access.js'` (terlewat di grep pertama → 2 test gagal → diperbaiki; pelajaran: modul yang meng-import modul yang dipindah ikut dicek, bukan hanya modul target).
+
+### Keputusan desain (tercatat)
+- **`bot.js` belum dipecah ke `commands/` + `wizards/`** — alasan: (1) bot production berjalan via systemd (`socai-bot` active) — tidak bisa test runtime (launch kedua = bentrok long-polling); (2) refactor 1.000+ baris tanpa test harness = risiko tinggi. Keputusan: pindah utuh dulu (aman, reversible), pecah menyusul setelah ada test infra bot.
+- `escMarkdown`, `fmtPlan`, `getPlanById`, wizard state (`contentWizard`, `productWizard`, `pendingPlans`) tetap di `bot.js`.
+
+### Verifikasi
+- `node --check` 5 file bot; import smoke `helpers`/`access` (bukan `bot.js`); `npm run test:ci` → **103/103 + QA PASSED**.
+- **Perlu verifikasi manual owner**: `sudo systemctl restart socai-bot` lalu cek log (modul baru harus load & connect).
+
+### Commit
+| Commit | Pesan |
+|--------|-------|
+| `(F8)` | `refactor(telegram): move telegram feature to lib/features/ (vertical slicing F8)` |
+

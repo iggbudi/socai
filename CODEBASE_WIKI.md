@@ -52,7 +52,7 @@ Catatan:
 ```text
 .
 ├── server.js                         # Thin bootstrap web + shutdown
-├── telegram-bot.js                   # Entry point bot Telegram
+├── telegram-bot.js                   # Entry tipis → lib/features/telegram/bot.js (F8)
 ├── package.json                      # Scripts, deps, Node >=24
 ├── AGENTS.md                         # Instruksi agent project
 ├── README.md                         # Overview + diagram sistem
@@ -71,8 +71,6 @@ Catatan:
 │   │   ├── html.js                    # escapeHtml
 │   │   ├── telegramNotify.js          # Notifikasi Telegram
 │   │   └── test/                      # Co-located tests (wibTime, mediaUrl)
-│   ├── telegramAccess.js             # ACL role bot
-│   ├── env.js                        # Validasi env web/bot
 │   ├── features/
 │   │   ├── agent/                    # Fitur AI agent (F6): core, runner, runs, aiLimits, actuator/, autonomousJobs, approval, publishFeedback, routes (asisten + agent runs), view + test/
 │   │   ├── channels/                 # Adapter channel social media (F2): registry, threads, instagram, prompt + test/
@@ -80,7 +78,9 @@ Catatan:
 │   │   ├── dashboard/                  # Dashboard page (F3)
 │   │   ├── produk/                     # CRUD produk + upload (F4): routes, upload, view
 │   │   ├── pemasaran/                  # Domain, routes, jobs, view + test (F5)
-│   │   └── evaluasi/                   # Metrik M1–M7 + route /api/agent/metrics + view + test (F7)
+│   │   ├── evaluasi/                   # Metrik M1–M7 + route /api/agent/metrics + view + test (F7)
+│   │   └── telegram/                   # Fitur bot (F8): bot.js (self-executing), helpers.js, access.js + test/
+│   ├── env.js                        # Validasi env web/bot
 │   ├── web/                            # Express app modular
 ├── public/uploads/                   # Upload gambar lokal
 └── test/                             # node:test suites + qa-smoke.mjs
@@ -93,7 +93,7 @@ Catatan:
 ```mermaid
 flowchart TB
   WEB[Web Dashboard] --> EXPRESS[Express lib/web]
-  TG[Telegram Bot] --> BOT[telegram-bot.js]
+  TG[Telegram Bot] --> BOT[lib/features/telegram/bot.js]
   EXPRESS --> AGENT[lib/features/agent/core.js]
   BOT --> AGENT
   AGENT --> RO[(AI read-only pool)] --> PG[(PostgreSQL)]
@@ -220,7 +220,7 @@ Repliz menggunakan `REPLIZ_API_KEY`, `REPLIZ_SECRET`, `REPLIZ_ACCOUNT_ID`, `REPL
 
 ## 9. Bot Telegram
 
-Entry point: `telegram-bot.js`; ACL: `lib/telegramAccess.js`; user store: `telegram-users.json`.
+Entry point: `telegram-bot.js` (thin); logika: `lib/features/telegram/bot.js`; ACL: `lib/features/telegram/access.js`; user store: `telegram-users.json`.
 
 | Role | Kemampuan |
 |---|---|
@@ -327,7 +327,7 @@ Suite utama mencakup sanitasi media, magic-byte image, AI limits, rate limit, pe
 
 - Jaga dokumentasi `CODEBASE_WIKI.md`, `AGENTS.md`, `README.md`, `autonomous.md`, dan `evaluasi.md` tetap sinkron.
 - Pertimbangkan migration runner eksplisit jika schema makin kompleks.
-- Pertimbangkan memecah `telegram-bot.js` jika command/wizard bertambah besar.
+- Pertimbangkan memecah `lib/features/telegram/bot.js` (commands/ + wizards/) setelah ada test harness bot (risiko runtime tanpa test).
 - Tambahkan adapter channel baru melalui pola `lib/features/channels/*` + tests.
 - Perluas metrics dashboard bila kebutuhan penelitian bertambah.
 

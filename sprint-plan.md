@@ -227,6 +227,7 @@ Dokumen ini adalah rencana kerja berbasis sprint untuk menindaklanjuti hasil aud
 | S13 | 0.5–1 hari | Vertical slicing F5: fitur `pemasaran` (domain + routes + jobs + view) → `lib/features/pemasaran/` |
 | S14 | 1–1.5 hari | Vertical slicing F6: fitur `agent` (core + runner + runs + actuator + jobs + approval + routes + view) → `lib/features/agent/` |
 | S15 | 0.5 hari | Vertical slicing F7: fitur `evaluasi` (metrics + route + view) → `lib/features/evaluasi/`; `health` → `lib/web/health.js` |
+| S16 | 1 hari | Vertical slicing F8: fitur `telegram` — `access` + `helpers` co-located; bot.js utuh dari `telegram-bot.js`; entry root tipis |
 | **Total** | **±5–7 hari kerja** | |
 
 ---
@@ -417,5 +418,28 @@ Dokumen ini adalah rencana kerja berbasis sprint untuk menindaklanjuti hasil aud
 **DoD**: tidak ada `lib/evaluationMetrics.js`, `lib/health.js`, `views/evaluasi.js` tersisa; test hijau; CI hijau.
 
 **Fase berikutnya (rencana F8)**: fitur `telegram` (terbesar tersisa) — pecah `telegram-bot.js` (1.364 baris) → `lib/features/telegram/`: `index.js` (`createBot()` wiring), `access.js` (telegramAccess), `helpers.js` (safeReply, escMarkdown, splitLongText), `commands/` (status, listproduk, jadwalkonten, statuskonten, cekpost, dll), `wizards/` (tambahproduk, buatkonten, jadwalkan, postnow, retrypost, ubahstatuskonten, hapuskonten); `telegram-bot.js` di root jadi entry tipis; update `lib/features/agent/approval.js` (import telegramNotify — sudah shared ✓); co-located test `test/telegramAccess.test.js`.
+
+---
+
+## 23. Sprint 16 — Vertical Slicing F8: Fitur `telegram` (1 Agustus 2026)
+
+**Tujuan**: seluruh bot masuk `lib/features/telegram/`; root entry jadi tipis.
+
+**Tasks (kode)**
+- [x] `lib/features/telegram/`: `access.js` (dari `lib/telegramAccess.js`), `helpers.js` (`safeReply`, `replyLong`, `markdownToTelegramHtml`, `escapeTelegramHtml` — diekstrak dari bot), `bot.js` (**dipindah utuh** dari `telegram-bot.js` 1.364 baris — nol perubahan logika), `index.js` (public API access + helpers; **tidak** re-export bot.js karena self-executing)
+- [x] `telegram-bot.js` root → entry tipis: `import './lib/features/telegram/bot.js'`
+- [x] `__dirname` fix: `UPLOAD_DIR` & `TELEGRAM_USERS_FILE` → 3× `..` (repo root)
+- [x] Co-located test: `test/telegramAccess.test.js` → `lib/features/telegram/test/`; import `lib/shared/telegramNotify.js` → `'../features/telegram/access.js'` (terlewat awalnya → 2 test gagal → diperbaiki)
+- [x] Verifikasi: `node --check` 5 file + import smoke helpers/access (bukan bot.js — self-executing launch, bot production aktif) + `npm run test:ci` → 103/103 + QA PASSED
+
+**Keputusan desain (tercatat)**: `bot.js` **belum** dipecah ke `commands/` + `wizards/` — risiko runtime tinggi tanpa test harness bot (long-polling aktif via systemd); dijadwalkan setelah ada unit-test infra untuk bot. `escMarkdown`, `fmtPlan`, wizard state tetap di `bot.js`.
+
+**Docs**: `AGENTS.md`, `README.md`, `CODEBASE_WIKI.md`, `logbook.md`
+
+**Commit**: `refactor(telegram): move telegram feature to lib/features/ (vertical slicing F8)`
+
+**DoD**: tidak ada `lib/telegramAccess.js` & `telegram-bot.js` monolit tersisa; test hijau; CI hijau; verifikasi manual restart `socai-bot` oleh owner.
+
+**Fase berikutnya (rencana F9)**: cleanup & finalisasi — (a) pindahkan 2 route web tersisa (`lib/web/routes/api/channels.js` → `features/channels/routes.js`, `lib/web/routes/api/repliz.js` → `features/pemasaran/routes.js`); (b) upgrade CI actions `checkout@v5`/`setup-node@v5`; (c) finalisasi tree docs + release note `v1.2.0`; (d) opsional: pecah `bot.js` (commands/ + wizards/) setelah harness test bot tersedia.
 
 

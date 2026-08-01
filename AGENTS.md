@@ -5,7 +5,7 @@
 Node.js ESM app for **Batik Bakaran** product & marketing management:
 
 - **Web app** (`server.js` bootstrap + `lib/web/`) — Express 5, session auth, inline HTML pages, REST API, AI chat (SSE)
-- **Telegram bot** (`telegram-bot.js`) — Telegraf, content wizards, Repliz scheduling, shared AI agent
+- **Telegram bot** (`telegram-bot.js` entry tipis + `lib/features/telegram/`) — Telegraf, content wizards, Repliz scheduling, shared AI agent
 - **Shared `lib/` modules** — DB pools (`lib/shared/db.js`), AI agent, rate limits, image/URL validation, Repliz client, env validation
 - **PostgreSQL** — `produk`, `pemasaran`, `users`, `user_sessions`
 - **Repliz** — optional multi-channel content scheduling/sync (Threads + Instagram via `lib/features/channels/`)
@@ -97,7 +97,8 @@ Copy `.env.example` → `.env` before running. Web validates env on startup via 
 | `lib/features/auth/` | Login/logout, session CSRF, login rate limit: `requireLogin`, `csrfToken` (`generateCsrfToken`, `ensureSessionCsrfToken`, `validateCsrfToken`), `loginRateLimit`, `routes` (login/logout), `view` (`loginPage`) + co-located test |
 | `lib/features/dashboard/` | Halaman dashboard (`dashboardPage`) |
 | `lib/features/produk/` | CRUD produk + upload gambar: `routes.js` (`registerProdukRoutes` + `registerUploadRoutes`), `upload.js` (multer 5MB + magic-byte), `view.js` (`produkPage`) |
-| `lib/telegramAccess.js` | `createTelegramAccess()` — role-based ACL (`super_admin` > `operator` > `viewer`), migrates legacy `allowed_user_ids[]` |
+| `lib/features/telegram/access.js` | `createTelegramAccess()` — role-based ACL (`super_admin` > `operator` > `viewer`), migrates legacy `allowed_user_ids[]` |
+| `lib/features/telegram/` | Fitur bot (F8): `bot.js` (self-executing — Telegraf, wizards, Repliz commands, startBot), `helpers.js` (`safeReply`, `replyLong`, `markdownToTelegramHtml`), `access.js`, `test/` |
 | `lib/web/health.js` | `collectHealthStatus()` — DB ping + optional config flags (`?detail=1`) |
 | `lib/features/agent/runs.js` | `agent_runs` audit log: create/log/complete runs, metrics, purge |
 | `lib/features/agent/actuator/` | Bounded actuator tools + `AUTONOMY_MODE` policy |
@@ -107,7 +108,7 @@ Copy `.env.example` → `.env` before running. Web validates env on startup via 
 | `lib/features/agent/publishFeedback.js` | Publish outcome cache injected into agent system prompt |
 | `lib/web/` | Web app modules: `createApp.js` (Express factory), `middleware/` (CSRF, CSP nonce), `routes/` (pages + health + API sisa), `views/` (sisa view) |
 
-**Entry points:** `server.js` (thin bootstrap: env validation, schema init, `createWebApp()`, listen, shutdown), `telegram-bot.js` (access control via `lib/telegramAccess.js` + `telegram-users.json`, wizards, Repliz commands).
+**Entry points:** `server.js` (thin bootstrap: env validation, schema init, `createWebApp()`, listen, shutdown), `telegram-bot.js` (thin entry → `lib/features/telegram/bot.js`: access control via `access.js` + `telegram-users.json`, wizards, Repliz commands).
 
 ## Security (P0+P1 summary)
 
@@ -121,7 +122,7 @@ Copy `.env.example` → `.env` before running. Web validates env on startup via 
 - **Helmet + CSP** — enabled with per-request nonce (`lib/web/middleware/csp.js`); inline `<script>`/`<style>` in views use `nonce` attribute; no `style-src 'unsafe-inline'` (styles via CSS classes); `script-src-attr 'none'` — views must use `addEventListener` in nonce scripts (shared `HAMBURGER_BIND_JS` in `lib/shared/pageInit.js`), never HTML `onclick`/`onchange` attributes
 - **Login rate limit** — 5 attempts / 15 min per IP
 - **Logout CSRF** — `POST /logout` with session `_csrf` token; `GET /logout` redirects to `/dashboard` (no session destroy)
-- **Telegram ACL** — roles via `lib/telegramAccess.js`: `super_admin` (full + user mgmt), `operator` (AI, wizards, Repliz), `viewer` (read-only commands); `/start`, `/help`, `/whoami` open to all
+- **Telegram ACL** — roles via `lib/features/telegram/access.js`: `super_admin` (full + user mgmt), `operator` (AI, wizards, Repliz), `viewer` (read-only commands); `/start`, `/help`, `/whoami` open to all
 
 ## Database Schema
 

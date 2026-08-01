@@ -44,7 +44,7 @@ Aplikasi menggabungkan **web dashboard**, **bot Telegram**, **AI agent berbasis 
 ```text
 socai/
 ├── server.js              # Bootstrap web + Repliz background jobs
-├── telegram-bot.js        # Entry point bot Telegram
+├── telegram-bot.js        # Entry tipis → lib/features/telegram/bot.js
 ├── lib/
 │   ├── shared/             # Shared infra (F0/F1)
 │   │   ├── db.js           # pool + aiReadPool
@@ -57,15 +57,16 @@ socai/
 │   │   ├── telegramNotify.js  # Notifikasi Telegram
 │   │   └── test/           # Co-located tests (F1)
 │   ├── agent.js            # AI agent, db_query, web_search, sessions
-│   ├── features/           # Vertical slicing (F2–F7)
+│   ├── features/           # Vertical slicing (F2–F8)
 │   │   ├── channels/       # Multi-channel adapter
 │   │   ├── auth/           # Login, logout, CSRF, rate limit
 │   │   ├── dashboard/      # Dashboard page
 │   │   ├── produk/         # CRUD produk + upload gambar
 │   │   ├── pemasaran/      # Domain, routes, jobs, view
 │   │   ├── agent/          # AI agent core, tools, actuator
-│   │   └── evaluasi/       # Metrik riset M1–M7
-│   ├── telegramAccess.js  # Role-based ACL bot
+│   │   ├── evaluasi/       # Metrik riset M1–M7
+│   │   └── telegram/       # Bot: bot.js, helpers, access, test
+│   ├── env.js             # Validasi env web/bot
 │   ├── health.js          # Health check
 │   └── web/               # Modul web (refactor Sprint 3)
 │       ├── createApp.js   # Factory Express
@@ -135,7 +136,7 @@ flowchart TB
 
     subgraph Application["Lapisan Aplikasi"]
         EXP["Express lib/web\nREST API + SSE"]
-        BOT["telegram-bot.js"]
+        BOT["lib/features/telegram/bot.js"]
         JOBS["features/pemasaran/jobs\nauto-schedule & sync"]
     end
 
@@ -401,7 +402,7 @@ classDiagram
 flowchart TB
     subgraph EntryPoints
         SRV[server.js]
-        TGB[telegram-bot.js]
+        TGB[lib/features/telegram/bot.js]
     end
 
     subgraph WebModule["lib/web"]
@@ -416,7 +417,7 @@ flowchart TB
         AGT[agent.js]
         PEM[features/pemasaran/domain.js]
         REP[shared/repliz.js]
-        TAC[telegramAccess.js]
+        TAC[features/telegram/access.js]
         ENV[env.js]
         HL[web/health.js]
     end
