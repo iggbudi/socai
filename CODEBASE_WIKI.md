@@ -183,6 +183,9 @@ Semua mutasi `/api/*` wajib lolos CSRF.
 
 `lib/agent.js` mengekspos `pool`, `aiReadPool`, `agentSessions`, `initAgent()`, `closeAgentPools()`, dan context audit run aktif.
 
+Dependency: `@earendil-works/pi-coding-agent` **^0.83.0**. Sejak 0.83.0, API `AuthStorage`/`ModelRegistry` diganti `ModelRuntime`:
+`ModelRuntime.create({ allowModelNetwork: false })` (credentials dari `auth.json` + env `XIAOMI_API_KEY` dll), resolve model via `modelRuntime.getModel(provider, modelId)`, dan diteruskan ke `createAgentSession({ modelRuntime, ... })`.
+
 | Tool | Peran | Guardrail |
 |---|---|---|
 | `db_query` | Baca data `produk`/`pemasaran` | SELECT-only, single table, no JOIN, no multi statement, max 50 rows |

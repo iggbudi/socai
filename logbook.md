@@ -222,6 +222,34 @@ Pindahkan inline styles ke CSS classes agar `style-src` tidak perlu `'unsafe-inl
 
 ---
 
+## Sprint 2 — Upgrade Dependensi & Audit Fix (A3)
+
+### Hasil
+- **`@earendil-works/pi-coding-agent` 0.79.6 → 0.83.0**: `undici` 8.3.0→8.5.0 & `ws` 8.20.1→8.21.0 (keduanya keluar dari range vuln).
+- **`npm audit fix`**: `express` → 5.2.1, `multer` → 2.2.0, `body-parser` → 2.3.0 (semua fix).
+- **Sisa 1 high (brace-expansion 5.0.7 nested via minimatch)**: diselesaikan dengan `overrides: { "brace-expansion": "5.0.9" }` di package.json.
+- **Kendala unik**: override tidak efektif selama `node_modules/.package-lock.json` (hidden lockfile) masih mencatat 5.0.7 — dibersihkan + regenerate lockfile → **`npm audit --omit=dev`: 0 vulnerabilities**.
+- Lockfile baru bersih dari URL mirror Tencent (0 refs).
+
+### Breaking change API (0.83.0) & Adaptasi
+- `AuthStorage` & `ModelRegistry` **tidak lagi diexport** dari `@earendil-works/pi-coding-agent`; `createAgentSession` options mengganti `authStorage`/`modelRegistry` dengan `modelRuntime`.
+- Adaptasi `lib/agent.js`:
+  - `ModelRuntime.create({ allowModelNetwork: false })` menggantikan `AuthStorage.create()` + `ModelRegistry.create(authStorage)`.
+  - `modelRuntime.getModel(provider, modelId)` menggantikan `modelRegistry.find(...)`.
+  - `createAgentSession({ ..., modelRuntime, ... })`.
+- Verifikasi: smoke test `initAgent` sukses — memilih `xiaomi/mimo-v2.5-pro` (auth dari env `XIAOMI_API_KEY` terbaca), AgentSession ter-create.
+
+### Verifikasi
+- `npm test`: **79/79 pass** · `npm run test:ci`: hijau.
+- `npm audit --omit=dev`: **0 vulnerabilities**.
+
+### Commit
+| Commit | Pesan |
+|--------|-------|
+| *(tbd)* | chore(deps): bump @earendil-works/pi-coding-agent to 0.83.0; npm audit clean |
+
+---
+
 ## Backlog / Lanjutan
 
 | Prioritas | Item |

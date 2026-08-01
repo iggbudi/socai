@@ -90,10 +90,10 @@ Dokumen ini adalah rencana kerja berbasis sprint untuk menindaklanjuti hasil aud
 **Tujuan**: `npm audit --omit=dev` bersih (0 vulnerabilities).
 
 **Tasks**
-- [ ] `npm install @earendil-works/pi-coding-agent@latest` (target 0.83.0)
-- [ ] `npm audit fix`; periksa sisa vuln (undici/ws) — tambah `overrides` di `package.json` bila perlu
-- [ ] `npm run test:ci` full; verifikasi import agent, definisi tool, dan API `createAgentSession` tidak berubah
-- [ ] Catat perubahan perilaku/breaking change (jika ada) di docs
+- [x] `npm install @earendil-works/pi-coding-agent@latest` (target 0.83.0) — terpasang `0.83.0` (undici 8.5.0, ws 8.21.0 — keduanya keluar dari range vuln)
+- [x] `npm audit fix`; periksa sisa vuln (undici/ws) — tambah `overrides` di `package.json` bila perlu → override `brace-expansion: 5.0.9` (sisa vuln nested minimatch; hoisted setelah bersihkan `node_modules/.package-lock.json`)
+- [x] `npm run test:ci` full; verifikasi import agent, definisi tool, dan API `createAgentSession` tidak berubah → **breaking change ditemukan**: `AuthStorage`/`ModelRegistry` dihapus dari export → diadaptasi ke `ModelRuntime.create()` + `getModel()`; `initAgent` terverifikasi via smoke test
+- [x] Catat perubahan perilaku/breaking change (jika ada) di docs → logbook + CODEBASE_WIKI
 
 **Docs**: `CODEBASE_WIKI.md` (bagian dependencies), `logbook.md`
 
