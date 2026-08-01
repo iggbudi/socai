@@ -169,3 +169,66 @@ Pindahkan inline styles ke CSS classes agar `style-src` tidak perlu `'unsafe-inl
 - Log error historis `ensureSessionCsrfToken` di journal (~16:03) sudah resolved sebelum sesi berlangsung.
 - `saveBtn.onclick = ...` di asisten.js **CSP-safe** (JS property, bukan atribut HTML).
 - Framing judul alternatif yang lebih presisi: *"AI Agent Terkendali untuk Perencanaan dan Orkestrasi Konten Threads pada UMKM"*.
+
+---
+
+# Logbook — Sesi 1 Agustus 2026 (Audit & Sprint Remediasi)
+
+**Tanggal:** 1 Agustus 2026
+**Konteks:** Audit menyeluruh proyek → penyusunan `sprint-plan.md` (Sprint 0–7) → eksekusi Sprint 0 & Sprint 1.
+**Aturan sprint:** implementasi → test hijau → update docs → commit scoped → push → CI/CD hijau.
+
+---
+
+## Sprint 0 — Baseline, Plan & Fix CI Blocker (A9)
+
+### Hasil
+- **`sprint-plan.md`** dibuat (238 baris): temuan audit A1–A9, aturan main, CI/CD, Sprint 0–7, timeline, risiko.
+- **Baseline**: `npm run test:ci` hijau (77 test + QA smoke).
+
+### CI Blocker ditemukan (A9)
+- Run CI pertama di GitHub Actions **failure** pada step `npm ci`.
+- Root cause: `package-lock.json` berisi **123 URL `http://mirrors.tencentyun.com`** (registry mirror lokal di `~/.npmrc`) — tidak bisa diakses dari GitHub runner.
+- Perbaikan (`cd43a3a`): semua URL diganti ke `https://registry.npmjs.org` (versi & integrity hash tidak berubah) → **CI hijau**.
+
+### Commit Sprint 0
+| Commit | Pesan |
+|--------|-------|
+| `6e10946` | docs: add audit sprint plan (S0 baseline) |
+| `cd43a3a` | fix(ci): regenerate package-lock against registry.npmjs.org; document A9 in sprint plan |
+
+---
+
+## Sprint 1 — Fix Login 500 & Rate-Limit Telegram (A1, A2)
+
+### Temuan Audit
+- **A1 (P1)**: `POST /login` tanpa Content-Type form → HTTP 500 (`TypeError: req.body undefined`), terkonfirmasi di journal produksi.
+- **A2 (P2)**: Pesan rate-limit Telegram menampilkan "undefined" (`rate.retryAfterSec` tidak ada; yang benar `retryAfterMs`).
+
+### Perbaikan
+- **`lib/web/routes/auth.js`** — `const { username, password } = req.body || {};` → request non-form/tanpa body jatuh ke validasi biasa (200 loginPage), bukan 500.
+- **`telegram-bot.js`** — `Math.ceil(rate.retryAfterMs / 1000)` untuk teks "Coba lagi dalam N detik".
+- **`lib/agent.js`** — interval cleanup sesi agent di-`unref()` agar tidak menahan proses hidup (perlu untuk test route tanpa hang).
+- **`test/routes.test.js`** (baru) — test route level pertama: `POST /login` non-form & tanpa body → bukan 500.
+
+### Verifikasi
+- `npm test`: **79/79 pass** (sebelumnya 77) · `npm run test:ci`: hijau.
+- Curl reproduksi vs server temp: `text/plain` & tanpa body → **HTTP 200** (sebelumnya 500).
+
+### Commit
+| Commit | Pesan |
+|--------|-------|
+| *(tbd)* | fix(web): handle login POST without form body (no 500); fix telegram rate-limit retry text |
+
+---
+
+## Backlog / Lanjutan
+
+| Prioritas | Item |
+|-----------|------|
+| P2 | Sprint 2: upgrade `pi-coding-agent` → 0.83.0 + `npm audit` bersih (A3) |
+| P2 | Sprint 3: timezone WIB eksplisit + deploy units (A4) |
+| P3 | Sprint 4: escape error dinamis di views (A5) |
+| P3 | Sprint 5: hardening CSRF & trust proxy (A6) |
+| P3 | Sprint 6: perluas `test/routes.test.js` (health, auth guard, CSRF) (A7) |
+| Info | Sprint 7: konfirmasi token bot @DBSPresensiBot & rotasi DB password (A8) |

@@ -359,7 +359,8 @@ bot.on('text', async (ctx, next) => {
   const rateKey = `telegram:${chatId}`;
   const rate = telegramAiRateLimiter.check(rateKey);
   if (!rate.allowed) {
-    return ctx.reply(`⏳ Terlalu banyak request AI. Coba lagi dalam ${rate.retryAfterSec} detik.`);
+    const retryAfterSec = Math.ceil(rate.retryAfterMs / 1000);
+    return ctx.reply(`⏳ Terlalu banyak request AI. Coba lagi dalam ${retryAfterSec} detik.`);
   }
   telegramAiRateLimiter.consume(rateKey);
 

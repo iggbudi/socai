@@ -70,9 +70,9 @@ Dokumen ini adalah rencana kerja berbasis sprint untuk menindaklanjuti hasil aud
 **Tujuan**: hilangkan HTTP 500 pada login tanpa body; perbaiki teks rate-limit Telegram.
 
 **Tasks (kode)**
-- [ ] `lib/web/routes/auth.js:31` → `const { username, password } = req.body || {};` dan tolak request non-form (`req.is('application/x-www-form-urlencoded')`) dengan respons 4xx/loginPage — jangan 500
-- [ ] `telegram-bot.js:362` → gunakan `Math.ceil(rate.retryAfterMs / 1000)` (ganti `rate.retryAfterSec` yang tidak ada)
-- [ ] Tambah test regresi (pattern test route ada di Sprint 6): `POST /login` body kosong / `Content-Type` non-form → **bukan 500**
+- [x] `lib/web/routes/auth.js:31` → `const { username, password } = req.body || {};` dan tolak request non-form (`req.is('application/x-www-form-urlencoded')`) dengan respons 4xx/loginPage — jangan 500
+- [x] `telegram-bot.js:362` → gunakan `Math.ceil(rate.retryAfterMs / 1000)` (ganti `rate.retryAfterSec` yang tidak ada)
+- [x] Tambah test regresi (pattern test route ada di Sprint 6): `POST /login` body kosong / `Content-Type` non-form → **bukan 500** (`test/routes.test.js`)
 
 **Docs**: `logbook.md` (entry sprint), `CODEBASE_WIKI.md` (changelog)
 
