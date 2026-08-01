@@ -11,6 +11,9 @@ Node.js ESM app for **Batik Bakaran** product & marketing management:
 - **Repliz** — optional multi-channel content scheduling/sync (Threads + Instagram via `lib/channels/`)
 - **Cloudinary** — optional image upload from Telegram marketing wizard
 
+> Audit & rencana remediasi sprint: `sprint-plan.md` · catatan sesi: `logbook.md` ·
+> template deploy: `deploy/` · pengaturan WIB: `lib/wibTime.js` (jadwal selalu +07:00 eksplisit).
+
 No build step, no TypeScript. Node **>=24**. Tests: `npm test` (Node built-in `node:test`)
 — termasuk unit tests per modul (`test/*.test.js`) dan route-level tests (`test/routes.test.js`:
 login body guard, health shape, auth guard, CSRF e2e) yang berjalan tanpa database.

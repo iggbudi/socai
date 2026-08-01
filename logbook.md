@@ -218,7 +218,7 @@ Pindahkan inline styles ke CSS classes agar `style-src` tidak perlu `'unsafe-inl
 ### Commit
 | Commit | Pesan |
 |--------|-------|
-| *(tbd)* | fix(web): handle login POST without form body (no 500); fix telegram rate-limit retry text |
+| `167c35b` | fix(web): handle login POST without form body (no 500); fix telegram rate-limit retry text |
 
 ---
 
@@ -246,7 +246,7 @@ Pindahkan inline styles ke CSS classes agar `style-src` tidak perlu `'unsafe-inl
 ### Commit
 | Commit | Pesan |
 |--------|-------|
-| *(tbd)* | chore(deps): bump @earendil-works/pi-coding-agent to 0.83.0; npm audit clean |
+| `ee2c981` | chore(deps): bump @earendil-works/pi-coding-agent to 0.83.0; npm audit clean |
 
 ---
 
@@ -278,7 +278,7 @@ Pindahkan inline styles ke CSS classes agar `style-src` tidak perlu `'unsafe-inl
 ### Commit
 | Commit | Pesan |
 |--------|-------|
-| *(tbd)* | fix(schedule): explicit WIB (+07:00) parsing and calendar slots; add deploy units |
+| `edc5bb1` | fix(schedule): explicit WIB (+07:00) parsing and calendar slots; add deploy units |
 
 ---
 
@@ -302,7 +302,7 @@ Pindahkan inline styles ke CSS classes agar `style-src` tidak perlu `'unsafe-inl
 ### Commit
 | Commit | Pesan |
 |--------|-------|
-| *(tbd)* | fix(web): escape dynamic error text in asisten/evaluasi/produk views |
+| `66b24ce` | fix(web): escape dynamic error text in asisten/evaluasi/produk views |
 
 ---
 ## Sprint 5 — Hardening CSRF & Trust Proxy (A6)
@@ -328,7 +328,7 @@ Pindahkan inline styles ke CSS classes agar `style-src` tidak perlu `'unsafe-inl
 ### Commit
 | Commit | Pesan |
 |--------|-------|
-| *(tbd)* | fix(security): tighten CSRF origin check and trust proxy to loopback |
+| `10d8f8d` | fix(security): tighten CSRF origin check and trust proxy to loopback |
 
 ---
 
@@ -353,12 +353,27 @@ Pindahkan inline styles ke CSS classes agar `style-src` tidak perlu `'unsafe-inl
 ### Commit
 | Commit | Pesan |
 |--------|-------|
-| *(tbd)* | test(web): add route-level tests (login body guard, health, auth guard) |
+| `543cd32` | test(web): add route-level tests (login body guard, health, auth guard) |
 
 ---
 
-## Backlog / Lanjutan
+## Sprint 7 — Finalisasi Docs, Regression & Release
 
-| Prioritas | Item |
-|-----------|------|
-| Info | Sprint 7: finalisasi docs & release — konfirmasi token bot @DBSPresensiBot (A8), rotasi DB password, regression penuh + tag v1.1.0 |
+### Regression penuh
+- `npm run test:ci`: **103/103 + QA PASSED**.
+- Smoke curl vs server temp (dengan `.env` + DB lokal): health `database ok`, login POST → 200, CSRF spoof → 403, `/produk` & `/pemasaran` → 401 tanpa session.
+
+### A8 — Ops yang butuh keputusan owner (belum dieksekusi)
+- **Token bot Telegram** milik **@DBSPresensiBot** (bukan nama bot "socai") — kemungkinan token lama/dipinjam; konfirmasi ke pemilik & ganti token bila perlu (`.env` → `TELEGRAM_BOT_TOKEN` + restart `socai-bot`).
+- **Rotasi `DB_PASSWORD`** — password berpola nama diri; rotasi ke random string + update `.env` (service restart; pastikan `socai_ai_read` ikut diverifikasi).
+
+### Retrospective (S0–S7)
+- **Positif**: CI/CD sekarang benar-benar hijau & melindungi regresi (A1/A5/A6 punya test permanen); `npm audit` 0 vuln; jadwal WIB akurat di TZ server apa pun; docs (`sprint-plan.md`, `logbook.md`, `deploy/`) lengkap.
+- **Kendala yang tercatat**: lockfile mirror Tencent (A9) & hidden lockfile npm (S2) — keduanya kini terdokumentasi untuk proyek lain; breaking change `pi-coding-agent` 0.83.0 ditangani via `ModelRuntime`.
+- **Backlog jangka panjang**: deploy produksi (restart systemd + verifikasi), A8 ops di atas, tag release berikutnya, evaluasi metrik penelitian M1–M7 setelah AI dipakai di prod.
+
+### Commit & Release
+| Commit | Pesan |
+|--------|-------|
+| *(commit ini)* | docs: finalize sprint docs and release notes v1.1.0 |
+| `v1.1.0` | Tag release pertama pasca-remediasi |
