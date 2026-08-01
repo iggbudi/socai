@@ -760,3 +760,24 @@ root          server.js (thin), telegram-bot.js (thin), scripts/, deploy/, test/
 |--------|-------|
 | `(A9fix)` | `fix(ci): pin npm registry to registry.npmjs.org via .npmrc (A9 lockfile regression)` |
 
+---
+
+## Sprint 19 — Higiene Repo: Hapus File Stale (R5) (1 Agustus 2026, lanjutan)
+
+### Tujuan
+Membersihkan root repo dari probe debug manual dan menempatkan materi prompt marketing di lokasi dokumentasi yang eksplisit.
+
+### Perubahan
+- **Dihapus**: `test-agent.js` (probe `initAgent`) dan `test-bot.js` (probe token Telegraf); keduanya tidak termasuk glob test dan sudah tidak diperlukan sejak vertical slicing F6/F8.
+- **Dipindahkan**: `prompt_materi_pptx_automation_marketing.txt` → `docs/prompt-materi-pptx.txt`; isi dipertahankan.
+- **Verifikasi konfigurasi**: `backups/` tetap di `.gitignore`, sehingga artefak `repliz-reschedule-*.json` tidak ikut commit.
+- **Audit referensi**: tidak ada referensi aktif ke file stale di `.js`, `.json`, `.yml`, atau `.yaml`; hit di `sprint-plan.md`/`logbook.md` dipertahankan sebagai catatan historis.
+- **Dokumentasi**: tree root dan changelog S19 diperbarui di `CODEBASE_WIKI.md`; checklist S19 ditandai selesai di `sprint-plan-rekomendasi.md`.
+
+### Verifikasi lokal
+- `npm run test:ci` → **106/106 pass + QA PASSED**.
+- `npm run lint` → **0 error, 0 warning**.
+- Tidak ada `test-*.js` di root di luar direktori `test/`.
+
+### Commit
+`chore: remove stale root debug scripts (R5)`

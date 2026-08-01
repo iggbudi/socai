@@ -2,7 +2,7 @@
 
 Dokumentasi codebase untuk project `/var/www/socai.my.id` (**Batik Bakaran** — manajemen produk, pemasaran multi-channel, AI assistant, bounded autonomy, Repliz, dan bot Telegram).
 
-**Terakhir diperbarui:** 26 Juni 2026  
+**Terakhir diperbarui:** 1 Agustus 2026  
 **Repo:** https://github.com/iggbudi/socai.git
 
 Dokumen terkait: `AGENTS.md` (instruksi coding agent), `README.md` (overview + diagram), `autonomous.md` (bounded autonomy), `evaluasi.md` (metrik penelitian), `logbook.md` (catatan pengembangan).
@@ -59,6 +59,8 @@ Catatan:
 ├── autonomous.md                     # Bounded autonomy & policy
 ├── evaluasi.md                       # Metrik penelitian M1–M7
 ├── CODEBASE_WIKI.md                  # Dokumen ini
+├── docs/
+│   └── prompt-materi-pptx.txt         # Materi prompt marketing (referensi)
 ├── scripts/                          # Export metrics + SQL helper
 ├── lib/
 │   ├── shared/                        # Shared infra (F0/F1)
@@ -357,3 +359,4 @@ Rencana & status: `sprint-plan.md` · catatan sesi: `logbook.md` (Sesi 1 Agustus
 | S16 | `28b3e78` | Vertical slicing F8: fitur `telegram` (access + helpers co-located; bot.js utuh dari monolit 1.364 baris; entry root tipis) → `lib/features/telegram/` |
 | S17 | `acc3c47` | Vertical slicing F9 (final): 2 route web terakhir → fitur (`channels/routes.js`, `pemasaran/routes.js` + Repliz accounts); CI `checkout@v5`/`setup-node@v5`; web shell murni |
 | S18 | `1463039` | Prioritas 2 tooling: 3 test background jobs (106 total); ESLint 9 flat config + Prettier (0 error lint, masuk CI); script `test:coverage` — baseline lines 39% / branches 70.6% / funcs 54.2% |
+| S19 | `chore: remove stale root debug scripts (R5)` | Hapus probe debug root `test-agent.js`/`test-bot.js`; pindahkan materi prompt marketing ke `docs/`; verifikasi referensi dan `.gitignore` |
