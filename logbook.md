@@ -588,3 +588,28 @@ Fitur terbesar dipindah + `lib/agent.js` (539 baris) dipecah; web shell tersisa 
 |--------|-------|
 | `b6a5e78` | `refactor(agent): move agent feature to lib/features/ (vertical slicing F6)` |
 
+---
+
+## Vertical Slicing — Fase 7: Fitur `evaluasi` + `health` (1 Agustus 2026, lanjutan)
+
+### Tujuan
+Metrik riset M1–M7 punya rumah sendiri; `health` masuk web shell.
+
+### Perubahan (kode)
+- **`lib/features/evaluasi/`**: `metrics.js` (dari `lib/evaluationMetrics.js`, 276 baris), `view.js` (dari `views/evaluasi.js`), `routes.js` (route `/api/agent/metrics` **dipisah** dari `lib/features/agent/routes.js` — `registerEvaluasiRoutes`), `index.js`, `test/evaluationMetrics.test.js` co-located.
+- **`lib/web/health.js`** (dari `lib/health.js`) — aggregator lintas fitur ke web shell; `lib/web/routes/health.js` import diupdate (`'../health.js'`).
+- **Fix bug laten F6**: `agent/routes.js` memanggil `listAgentRuns` (blok runs) dan `getEvaluationMetrics` (blok metrics) **tanpa import** — ReferenceError hanya muncul saat route dipanggil (tidak tertangkap test). Fix: `listAgentRuns` ditambahkan ke import `./runs.js`; blok metrics dipindah ke evaluasi.
+- **Importer diupdate**: `createApp.js` (+`registerEvaluasiRoutes` import + call), `pages.js` (evaluasiPage), `qa-smoke.mjs` (import + VIEW_SOURCES + actuatorFiles `lib/evaluationMetrics.js`), `scripts/export-evaluation.mjs`, `agent/runs.js` (dynamic import → `'../evaluasi/metrics.js'`).
+
+### Kendala & pelajaran
+- **Bug laten dari F6b terungkap saat pemisahan route** — route yang tidak dipanggil test bisa punya import hilang; saat memindah blok antar-fitur, periksa simbol yang dipakai blok tsb.
+- Edit createApp gagal sekali (old_text salah konteks) → verifikasi dengan grep sebelum edit.
+
+### Verifikasi
+- `npm run test:ci` → **103/103 + QA PASSED**.
+
+### Commit
+| Commit | Pesan |
+|--------|-------|
+| `(F7)` | `refactor(evaluasi): move evaluasi feature to lib/features/ (vertical slicing F7)` |
+

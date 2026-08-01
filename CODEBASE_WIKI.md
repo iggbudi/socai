@@ -71,17 +71,16 @@ Catatan:
 │   │   ├── html.js                    # escapeHtml
 │   │   ├── telegramNotify.js          # Notifikasi Telegram
 │   │   └── test/                      # Co-located tests (wibTime, mediaUrl)
-│   ├── evaluationMetrics.js          # Metrik M1–M7
-│   ├── health.js                     # Health status collector
 │   ├── telegramAccess.js             # ACL role bot
 │   ├── env.js                        # Validasi env web/bot
 │   ├── features/
-│   │   ├── agent/                    # Fitur AI agent (F6): core, runner, runs, aiLimits, actuator/, autonomousJobs, approval, publishFeedback, routes (asisten + agent runs/metrics), view + test/
+│   │   ├── agent/                    # Fitur AI agent (F6): core, runner, runs, aiLimits, actuator/, autonomousJobs, approval, publishFeedback, routes (asisten + agent runs), view + test/
 │   │   ├── channels/                 # Adapter channel social media (F2): registry, threads, instagram, prompt + test/
 │   │   ├── auth/                       # Login/logout, session CSRF, rate limit (F3) + test/
 │   │   ├── dashboard/                  # Dashboard page (F3)
 │   │   ├── produk/                     # CRUD produk + upload (F4): routes, upload, view
-│   │   └── pemasaran/                  # Domain, routes, jobs, view + test (F5)
+│   │   ├── pemasaran/                  # Domain, routes, jobs, view + test (F5)
+│   │   └── evaluasi/                   # Metrik M1–M7 + route /api/agent/metrics + view + test (F7)
 │   ├── web/                            # Express app modular
 ├── public/uploads/                   # Upload gambar lokal
 └── test/                             # node:test suites + qa-smoke.mjs
@@ -137,7 +136,7 @@ Prinsip desain:
 | `middleware/csrf.js` | CSRF Origin/Referer untuk mutasi `/api/*` |
 | `routes/pages.js` | Halaman `/dashboard`, `/produk`, `/pemasaran`, `/asisten`, `/evaluasi` |
 | `routes/health.js` | `/health`, optional `?detail=1` |
-| `routes/api/*` | Sisa API: pemasaran, Repliz, channels, asisten, agent metrics |
+| `routes/api/*` | Sisa API: channels, Repliz accounts |
 | `views/*.js` | Template HTML inline; event harus via `addEventListener` ber-nonce |
 | `lib/features/pemasaran/jobs.js` | Poll status Repliz dan auto-schedule plan pending |
 ---
@@ -198,7 +197,7 @@ Dependency: `@earendil-works/pi-coding-agent` **^0.83.0**. Sejak 0.83.0, API `Au
 
 Mode autonomy: `assistive` (default aman), `supervised` (human-in-loop), `bounded` (aksi dalam batas policy/cap). Config global `AUTONOMY_MODE`; override web/bot/cron tersedia.
 
-Audit: `lib/features/agent/runs.js` mencatat run/tool/plans/error/durasi; `lib/evaluationMetrics.js` menghitung M1–M7; export via `scripts/export-evaluation.mjs`.
+Audit: `lib/features/agent/runs.js` mencatat run/tool/plans/error/durasi; `lib/features/evaluasi/metrics.js` menghitung M1–M7; export via `scripts/export-evaluation.mjs`.
 
 ---
 

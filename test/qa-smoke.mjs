@@ -16,7 +16,7 @@ import { dashboardPage } from '../lib/features/dashboard/view.js';
 import { produkPage } from '../lib/features/produk/view.js';
 import { pemasaranPage } from '../lib/features/pemasaran/view.js';
 import { asistenPage } from '../lib/features/agent/view.js';
-import { evaluasiPage } from '../lib/web/views/evaluasi.js';
+import { evaluasiPage } from '../lib/features/evaluasi/view.js';
 
 // HTML attributes only — JS property assignment (saveBtn.onclick =) is CSP-safe
 const INLINE_HANDLER = /<[^>]+\son(click|change|keydown|submit|input)\s*=/i;
@@ -48,7 +48,7 @@ const VIEW_SOURCES = [
   'lib/features/pemasaran/view.js',
   'lib/features/agent/view.js',
   'lib/features/dashboard/view.js',
-  'lib/web/views/evaluasi.js',
+  'lib/features/evaluasi/view.js',
   'lib/features/auth/view.js',
 ];
 
@@ -84,7 +84,7 @@ const actuatorFiles = [
   'lib/features/channels/instagram.js',
   'lib/features/channels/prompt.js',
   'lib/web/routes/api/channels.js',
-  'lib/evaluationMetrics.js',
+  'lib/features/evaluasi/metrics.js',
   'scripts/export-evaluation.mjs',
 ];
 for (const rel of actuatorFiles) {

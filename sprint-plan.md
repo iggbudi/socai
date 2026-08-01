@@ -226,6 +226,7 @@ Dokumen ini adalah rencana kerja berbasis sprint untuk menindaklanjuti hasil aud
 | S12 | 0.5 hari | Vertical slicing F4: fitur `produk` (CRUD + upload) → `lib/features/produk/` |
 | S13 | 0.5–1 hari | Vertical slicing F5: fitur `pemasaran` (domain + routes + jobs + view) → `lib/features/pemasaran/` |
 | S14 | 1–1.5 hari | Vertical slicing F6: fitur `agent` (core + runner + runs + actuator + jobs + approval + routes + view) → `lib/features/agent/` |
+| S15 | 0.5 hari | Vertical slicing F7: fitur `evaluasi` (metrics + route + view) → `lib/features/evaluasi/`; `health` → `lib/web/health.js` |
 | **Total** | **±5–7 hari kerja** | |
 
 ---
@@ -395,5 +396,26 @@ Dokumen ini adalah rencana kerja berbasis sprint untuk menindaklanjuti hasil aud
 **DoD**: tidak ada `lib/agent*.js`, `lib/actuator/`, `lib/autonomous*.js`, `lib/{aiLimits,publishFeedback,scheduleApproval}.js`, `routes/api/{asisten,agentRuns}.js`, `views/asisten.js` tersisa; test hijau; CI hijau.
 
 **Fase berikutnya (rencana F7)**: fitur `evaluasi` (kecil) — `lib/evaluationMetrics.js` → `lib/features/evaluasi/metrics.js`; `lib/web/views/evaluasi.js` → `view.js`; `registerAgentRunsRoutes` bagian metrics dipisah ke `lib/features/evaluasi/routes.js` (atau dibiarkan di agent — keputusan: pindah agar metrics punya rumah sendiri); `lib/health.js` → `lib/web/health.js` (web shell); importer: createApp, pages, qa-smoke, agent/runs.js (dynamic import evaluationMetrics); co-located test `test/evaluationMetrics.test.js`.
+
+---
+
+## 22. Sprint 15 — Vertical Slicing F7: Fitur `evaluasi` + `health` (1 Agustus 2026)
+
+**Tujuan**: metrik riset M1–M7 punya rumah sendiri; `health` masuk web shell.
+
+**Tasks (kode)**
+- [x] `lib/features/evaluasi/`: `metrics.js` (dari `lib/evaluationMetrics.js`, 276 baris), `view.js` (dari `views/evaluasi.js`), `routes.js` (route `/api/agent/metrics` **dipisah dari** `lib/features/agent/routes.js`), `index.js`, `test/evaluationMetrics.test.js` co-located
+- [x] `lib/web/health.js` (dari `lib/health.js` — aggregator lintas fitur ke web shell); `routes/health.js` import diupdate
+- [x] **Fix bug laten F6**: `agent/routes.js` memanggil `listAgentRuns`/`getEvaluationMetrics` tanpa import → tambah `listAgentRuns` ke import `./runs.js`; blok metrics dipindah ke evaluasi
+- [x] Update importer: `createApp.js` (+`registerEvaluasiRoutes`), `pages.js` (evaluasiPage), `qa-smoke.mjs` (import + VIEW_SOURCES + actuatorFiles), `scripts/export-evaluation.mjs`, `agent/runs.js` (dynamic import → `'../evaluasi/metrics.js'`)
+- [x] Verifikasi `npm run test:ci` → 103/103 + QA PASSED
+
+**Docs**: `AGENTS.md`, `README.md`, `CODEBASE_WIKI.md`, `logbook.md`
+
+**Commit**: `refactor(evaluasi): move evaluasi feature to lib/features/ (vertical slicing F7)`
+
+**DoD**: tidak ada `lib/evaluationMetrics.js`, `lib/health.js`, `views/evaluasi.js` tersisa; test hijau; CI hijau.
+
+**Fase berikutnya (rencana F8)**: fitur `telegram` (terbesar tersisa) — pecah `telegram-bot.js` (1.364 baris) → `lib/features/telegram/`: `index.js` (`createBot()` wiring), `access.js` (telegramAccess), `helpers.js` (safeReply, escMarkdown, splitLongText), `commands/` (status, listproduk, jadwalkonten, statuskonten, cekpost, dll), `wizards/` (tambahproduk, buatkonten, jadwalkan, postnow, retrypost, ubahstatuskonten, hapuskonten); `telegram-bot.js` di root jadi entry tipis; update `lib/features/agent/approval.js` (import telegramNotify — sudah shared ✓); co-located test `test/telegramAccess.test.js`.
 
 

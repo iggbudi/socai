@@ -57,12 +57,14 @@ socai/
 │   │   ├── telegramNotify.js  # Notifikasi Telegram
 │   │   └── test/           # Co-located tests (F1)
 │   ├── agent.js            # AI agent, db_query, web_search, sessions
-│   ├── features/           # Vertical slicing (F2–F5)
+│   ├── features/           # Vertical slicing (F2–F7)
 │   │   ├── channels/       # Multi-channel adapter
 │   │   ├── auth/           # Login, logout, CSRF, rate limit
 │   │   ├── dashboard/      # Dashboard page
 │   │   ├── produk/         # CRUD produk + upload gambar
-│   │   └── pemasaran/      # Domain, routes, jobs, view
+│   │   ├── pemasaran/      # Domain, routes, jobs, view
+│   │   ├── agent/          # AI agent core, tools, actuator
+│   │   └── evaluasi/       # Metrik riset M1–M7
 │   ├── telegramAccess.js  # Role-based ACL bot
 │   ├── health.js          # Health check
 │   └── web/               # Modul web (refactor Sprint 3)
@@ -416,7 +418,7 @@ flowchart TB
         REP[shared/repliz.js]
         TAC[telegramAccess.js]
         ENV[env.js]
-        HL[health.js]
+        HL[web/health.js]
     end
 
     subgraph Storage
