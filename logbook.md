@@ -506,5 +506,5 @@ Fondasi keamanan (login/logout/CSRF/rate limit) masuk pola fitur; dashboard ikut
 ### Commit
 | Commit | Pesan |
 |--------|-------|
-| `(F3)` | `refactor(auth): move auth + dashboard features to lib/features/ (vertical slicing F3)` |
+| `318a3be` | `refactor(auth): move auth + dashboard features to lib/features/ (vertical slicing F3)` |
 
