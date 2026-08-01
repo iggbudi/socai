@@ -41,6 +41,25 @@ function check(name, fn) {
   }
 }
 
+// A5 (audit): pola XSS di views — tidak boleh ada innerHTML yang di-assign
+// dari string + ekspresi dinamis, atau memakai `.message`/`err` langsung.
+const VIEW_SOURCES = [
+  'lib/web/views/produk.js',
+  'lib/web/views/pemasaran.js',
+  'lib/web/views/asisten.js',
+  'lib/web/views/dashboard.js',
+  'lib/web/views/evaluasi.js',
+  'lib/web/views/login.js',
+];
+
+for (const viewFile of VIEW_SOURCES) {
+  const src = fs.readFileSync(path.join(repoRoot, viewFile), 'utf8');
+  check(`${viewFile}: no dynamic innerHTML concat / .message (A5)`, () => {
+    assert.doesNotMatch(src, /\.innerHTML\s*=\s*['"][^'"]*['"]\s*\+/, 'innerHTML di-assign string + ekspresi dinamis');
+    assert.doesNotMatch(src, /\.innerHTML\s*=.*\.message/, 'innerHTML memakai .message');
+  });
+}
+
 check('createWebApp exports app', () => {
   const { app } = createWebApp();
   assert.ok(app);

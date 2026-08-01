@@ -271,6 +271,7 @@ Command penting: `/status`, `/listproduk`, `/jadwalkonten`, `/statuskonten`, `/t
 
 - CSRF pada mutasi `/api/*` dan `POST /logout`.
 - CSP Helmet + nonce; jangan tambah `onclick`, `onchange`, inline style bebas, atau script tanpa nonce.
+- **Views (A5)**: data dinamis/error message tidak boleh masuk `innerHTML` — pakai `textContent` atau `esc()`; qa-smoke memvalidasi pola ini.
 - Upload: multer filter awal + `assertValidImageBuffer()` magic-byte.
 - Gambar eksternal harus lewat `sanitizeImageUrl()`.
 - AI DB gunakan `aiReadPool`; query SELECT-only dan sandboxed.

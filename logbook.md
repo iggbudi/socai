@@ -282,11 +282,29 @@ Pindahkan inline styles ke CSS classes agar `style-src` tidak perlu `'unsafe-inl
 
 ---
 
-## Backlog / Lanjutan
+## Sprint 4 — Hardening XSS di Views (A5)
 
-| Prioritas | Item |
-|-----------|------|
-| P3 | Sprint 4: escape error dinamis di views (A5) |
+### Temuan Audit
+- `asisten.js:407` — `saveBtn.innerHTML = '❌ ' + err.message` → `err.message` dari `POST /api/pemasaran` bisa memuat konten AI/user (mis. pesan duplikat jadwal menyertakan `plan.jadwal`) → stored/self-XSS.
+- `evaluasi.js:223` — `grid.innerHTML = ... + err.message` (risiko serupa, lebih rendah).
+- `produk.js:358` — `p.stok` tanpa escape (risiko minimal, numerik).
+
+### Perbaikan
+- **`asisten.js`** — semua teks dinamis pindah ke `textContent`: error message, `savedText`, label tombol.
+- **`evaluasi.js`** — node error dibangun dengan `createElement` + `textContent` + `replaceChildren`; `renderTable` kini memakai `esc()` (nilai dari server seperti `autonomy_mode` di-escape).
+- **`produk.js`** — `esc(p.stok)`.
+- **`qa-smoke.mjs`** — 6 pattern check baru (A5): setiap view source tidak boleh punya `innerHTML` concat dinamis atau `.message` di `innerHTML` → mencegah regresi.
+
+### Verifikasi
+- `npm test`: **88/88 pass**; `npm run test:ci`: QA PASSED termasuk 6 cek A5 baru.
+- Sweep `grep`: tidak ada `innerHTML = '...' + expr` tersisa; sisa hanya string statis / nilai ter-escape.
+
+### Commit
+| Commit | Pesan |
+|--------|-------|
+| *(tbd)* | fix(web): escape dynamic error text in asisten/evaluasi/produk views |
+
+---
 | P3 | Sprint 5: hardening CSRF & trust proxy (A6) |
 | P3 | Sprint 6: perluas `test/routes.test.js` (health, auth guard, CSRF) (A7) |
 | Info | Sprint 7: konfirmasi token bot @DBSPresensiBot & rotasi DB password (A8) |

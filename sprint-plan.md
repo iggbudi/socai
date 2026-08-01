@@ -132,11 +132,11 @@ Dokumen ini adalah rencana kerja berbasis sprint untuk menindaklanjuti hasil aud
 **Tujuan**: tidak ada `innerHTML` dengan data dinamis yang tidak di-escape.
 
 **Tasks**
-- [ ] `lib/web/views/asisten.js:407` → `saveBtn.textContent = '❌ ' + err.message` (dan `title` via property, bukan `innerHTML`)
-- [ ] `lib/web/views/evaluasi.js:223` → bangun node error dengan `textContent`
-- [ ] `lib/web/views/produk.js:358` → escape `p.stok` (defensif, walau numerik)
-- [ ] Sweep `grep -rn 'innerHTML' lib/web/views/` → pastikan sisanya hanya string statis
-- [ ] Tambah cek pattern di `test/qa-smoke.mjs` (tidak ada `innerHTML` + ekspresi dinamis)
+- [x] `lib/web/views/asisten.js:407` → `saveBtn.textContent = '❌ ' + err.message` (dan `title` via property, bukan `innerHTML`) — juga `savedText` & label tombol statis → textContent
+- [x] `lib/web/views/evaluasi.js:223` → bangun node error dengan `textContent` (`replaceChildren`); `renderTable` kini memakai `esc()` (defense-in-depth)
+- [x] `lib/web/views/produk.js:358` → escape `p.stok` (defensif, walau numerik)
+- [x] Sweep `grep -rn 'innerHTML' lib/web/views/` → sisa hanya string statis / nilai yang sudah di-`esc()`
+- [x] Tambah cek pattern di `test/qa-smoke.mjs` (6 view files: tidak ada `innerHTML` concat dinamis / `.message`)
 
 **Docs**: `logbook.md`, `CODEBASE_WIKI.md` (security section)
 
