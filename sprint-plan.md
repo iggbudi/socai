@@ -224,6 +224,7 @@ Dokumen ini adalah rencana kerja berbasis sprint untuk menindaklanjuti hasil aud
 | S10 | 0.5 hari | Vertical slicing F2: fitur `channels` → `lib/features/channels/` + co-located test |
 | S11 | 0.5–1 hari | Vertical slicing F3: fitur `auth` + `dashboard` → `lib/features/`; `layout`/`pageInit` → `lib/shared/` |
 | S12 | 0.5 hari | Vertical slicing F4: fitur `produk` (CRUD + upload) → `lib/features/produk/` |
+| S13 | 0.5–1 hari | Vertical slicing F5: fitur `pemasaran` (domain + routes + jobs + view) → `lib/features/pemasaran/` |
 | **Total** | **±5–7 hari kerja** | |
 
 ---
@@ -347,5 +348,25 @@ Dokumen ini adalah rencana kerja berbasis sprint untuk menindaklanjuti hasil aud
 **DoD**: tidak ada import `routes/api/{produk,upload}.js`, `middleware/upload.js`, `views/produk.js` tersisa; test hijau; CI hijau.
 
 **Fase berikutnya (rencana F5)**: fitur `pemasaran` (terbesar setelah agent) — `lib/pemasaran.js` (domain: savePlansToDb, parseMarketingSchedule, schedulePlanToChannel, syncPlanReplizStatus) → `lib/features/pemasaran/domain.js`; `lib/web/routes/api/pemasaran.js` → `routes.js`; `lib/web/views/pemasaran.js` → `view.js`; `lib/web/replizJobs.js` (background jobs) → `jobs.js`; importer: agent.js (tools), scheduleApproval, replizJobs, telegram-bot.js, autonomousJobs; co-located test `test/pemasaran.test.js`.
+
+---
+
+## 20. Sprint 13 — Vertical Slicing F5: Fitur `pemasaran` (1 Agustus 2026)
+
+**Tujuan**: domain inti bisnis (Repliz scheduling) + background jobs keluar dari web shell & lib root.
+
+**Tasks (kode)**
+- [x] `lib/features/pemasaran/`: `domain.js` (dari `lib/pemasaran.js` — 297 baris, 13 export), `routes.js` (dari `routes/api/pemasaran.js`), `view.js` (dari `views/pemasaran.js`), `jobs.js` (dari `lib/web/replizJobs.js` utuh: sync + auto-schedule + `sleep`/`randomBulkDelayMs`), `index.js` (`export *` domain), `test/pemasaran.test.js` (co-located)
+- [x] Import internal: `domain.js` → `'../../shared/*'` + `'../channels/index.js'`; `jobs.js` → `'../../shared/*'` + `'./domain.js'` + `'../../publishFeedback.js'`; `routes.js` → `'./domain.js'` + `'./jobs.js'` + `'../auth/requireLogin.js'`
+- [x] Update 10 importer: `actuator/{calendar,contentPlan,schedule}.js`, `scheduleApproval.js`, `createApp.js`, `pages.js`, `server.js` (jobs), `telegram-bot.js`, `qa-smoke.mjs`, `lib/shared/test/wibTime.test.js`
+- [x] Verifikasi `npm run test:ci` → 103/103 + QA PASSED (satu kali gagal: `domain.js` import `'../shared/...'` salah level → `'../../shared/...'`)
+
+**Docs**: `AGENTS.md`, `README.md`, `CODEBASE_WIKI.md`, `logbook.md`
+
+**Commit**: `refactor(pemasaran): move pemasaran feature to lib/features/ (vertical slicing F5)`
+
+**DoD**: tidak ada import `lib/pemasaran.js`, `lib/web/replizJobs.js`, `routes/api/pemasaran.js`, `views/pemasaran.js` tersisa; test hijau; CI hijau.
+
+**Fase berikutnya (rencana F6)**: fitur `agent` (terbesar) — pecah `lib/agent.js` (539 baris): `core.js` (initAgent, sessions, tools), `runner.js` (agentRunner), `runs.js` (agentRuns), `aiLimits.js`, `actuator/`, `autonomous.js` (autonomousJobs + autonomousConfig), `publishFeedback.js`, `approval.js` (scheduleApproval), `routes.js` (asisten + agentRuns API), `view.js` (asisten); `lib/telegramNotify.js` sudah di shared; importer: telegram-bot.js, server.js, health.js, env.js.
 
 

@@ -14,7 +14,7 @@ const repoRoot = path.join(__dirname, '..');
 import { loginPage } from '../lib/features/auth/view.js';
 import { dashboardPage } from '../lib/features/dashboard/view.js';
 import { produkPage } from '../lib/features/produk/view.js';
-import { pemasaranPage } from '../lib/web/views/pemasaran.js';
+import { pemasaranPage } from '../lib/features/pemasaran/view.js';
 import { asistenPage } from '../lib/web/views/asisten.js';
 import { evaluasiPage } from '../lib/web/views/evaluasi.js';
 
@@ -45,7 +45,7 @@ function check(name, fn) {
 // dari string + ekspresi dinamis, atau memakai `.message`/`err` langsung.
 const VIEW_SOURCES = [
   'lib/features/produk/view.js',
-  'lib/web/views/pemasaran.js',
+  'lib/features/pemasaran/view.js',
   'lib/web/views/asisten.js',
   'lib/features/dashboard/view.js',
   'lib/web/views/evaluasi.js',

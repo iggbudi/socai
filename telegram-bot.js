@@ -15,7 +15,7 @@ import {
   schedulePlanToRepliz,
   schedulePlanToReplizNow,
   syncPlanReplizStatus,
-} from './lib/pemasaran.js';
+} from './lib/features/pemasaran/domain.js';
 import { normalizeAiMessage, AiMessageError } from './lib/aiLimits.js';
 import { createRateLimiter } from './lib/shared/rateLimit.js';
 import { assertValidImageBuffer, detectImageType, extForImageType } from './lib/shared/imageFile.js';

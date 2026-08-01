@@ -532,3 +532,26 @@ Fitur CRUD + upload gambar keluar dari web shell; `lib/web/middleware/` tinggal 
 |--------|-------|
 | `6b803f6` | `refactor(produk): move produk feature to lib/features/ (vertical slicing F4)` |
 
+---
+
+## Vertical Slicing — Fase 5: Fitur `pemasaran` (1 Agustus 2026, lanjutan)
+
+### Tujuan
+Domain inti bisnis (Repliz scheduling) + background jobs keluar dari web shell & lib root.
+
+### Perubahan (kode)
+- **`lib/features/pemasaran/`**: `domain.js` (dari `lib/pemasaran.js`, 297 baris, 13 export — `bulanIndonesia`, `parseMarketingSchedule`, `savePlansToDb`, `schedulePlanToRepliz`/`schedulePlanToChannel`, `syncPlanReplizStatus`, dll); `routes.js` (dari `routes/api/pemasaran.js`); `view.js` (dari `views/pemasaran.js`); `jobs.js` (dari `lib/web/replizJobs.js` **utuh** — `syncPendingReplizStatuses`, `autoSchedulePendingRepliz`, `sleep`/`randomBulkDelayMs` yang juga dipakai route pemasaran); `index.js` (`export *` untuk domain — 13 export, pragmatis vs eksplisit); `test/pemasaran.test.js` co-located.
+- **10 importer diupdate**: `lib/actuator/{calendar,contentPlan,schedule}.js` (→ `../features/pemasaran/domain.js`), `lib/scheduleApproval.js`, `lib/web/createApp.js`, `lib/web/routes/pages.js`, `server.js` (jobs), `telegram-bot.js` (domain), `test/qa-smoke.mjs`, `lib/shared/test/wibTime.test.js`.
+- `lib/web/` kini tanpa `replizJobs.js`; `lib/` root kehilangan `pemasaran.js`.
+
+### Kendala & pelajaran
+- **Kesalahan level path di `domain.js`**: sed mengganti `'./shared/x.js'` → `'../shared/x.js'` (1 level), padahal dari `lib/features/pemasaran/` perlu `'../../shared/x.js'` (2 level — `lib/features/pemasaran/` → `lib/features/` → `lib/`). 6 test file gagal load (ERR_MODULE_NOT_FOUND) → diperbaiki & semua hijau. **Pelajaran**: hitung kedalaman relatif sebelum sed; import `'./shared/*'` dari `lib/` root berbeda dengan `'../shared/*'` dari `lib/features/<fitur>/`.
+
+### Verifikasi
+- `npm run test:ci` → **103/103 + QA PASSED**.
+
+### Commit
+| Commit | Pesan |
+|--------|-------|
+| `(F5)` | `refactor(pemasaran): move pemasaran feature to lib/features/ (vertical slicing F5)` |
+

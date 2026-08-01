@@ -77,7 +77,6 @@ Catatan:
 │   ├── autonomousConfig.js           # Config autonomy mode
 │   ├── autonomousJobs.js             # Weekly plan cron, feedback, purge
 │   ├── evaluationMetrics.js          # Metrik M1–M7
-│   ├── pemasaran.js                  # Shared marketing/Repliz business logic
 │   ├── scheduleApproval.js           # Approval flow Telegram
 │   ├── publishFeedback.js            # Cache outcome publikasi untuk prompt
 │   ├── telegramAccess.js             # ACL role bot
@@ -89,7 +88,8 @@ Catatan:
 │   │   ├── channels/                   # Adapter channel social media (F2): registry, threads, instagram, prompt + test/
 │   │   ├── auth/                       # Login/logout, session CSRF, rate limit (F3) + test/
 │   │   ├── dashboard/                  # Dashboard page (F3)
-│   │   └── produk/                     # CRUD produk + upload (F4): routes, upload, view
+│   │   ├── produk/                     # CRUD produk + upload (F4): routes, upload, view
+│   │   └── pemasaran/                  # Domain, routes, jobs, view + test (F5)
 │   ├── web/                            # Express app modular
 ├── public/uploads/                   # Upload gambar lokal
 └── test/                             # node:test suites + qa-smoke.mjs
@@ -121,7 +121,7 @@ flowchart TB
 
 Prinsip desain:
 
-- **Shared core**: web dan bot memakai modul yang sama (`lib/shared/db.js` pools, `agent.js`, `pemasaran.js`, `actuator/`).
+- **Shared core**: web dan bot memakai modul yang sama (`lib/shared/db.js` pools, `agent.js`, `lib/features/pemasaran/domain.js`, `actuator/`).
 - **Bounded autonomy**: AI tidak bebas menulis DB; write path lewat actuator dan policy.
 - **Defense in depth**: CSRF, CSP nonce, rate limit, ACL Telegram, upload validation, DB read-only AI.
 - **Observability penelitian**: agent run/tool call dicatat untuk evaluasi M1–M7.
@@ -147,8 +147,7 @@ Prinsip desain:
 | `routes/health.js` | `/health`, optional `?detail=1` |
 | `routes/api/*` | Sisa API: pemasaran, Repliz, channels, asisten, agent metrics |
 | `views/*.js` | Template HTML inline; event harus via `addEventListener` ber-nonce |
-| `replizJobs.js` | Poll status Repliz dan auto-schedule plan pending |
-
+| `lib/features/pemasaran/jobs.js` | Poll status Repliz dan auto-schedule plan pending |
 ---
 
 ## 6. Routes Web
@@ -213,7 +212,7 @@ Audit: `lib/agentRuns.js` mencatat run/tool/plans/error/durasi; `lib/evaluationM
 
 ## 8. Pemasaran, Channel, dan Repliz
 
-`lib/pemasaran.js` adalah shared business logic untuk web + bot: `savePlansToDb()`, `schedulePlanToChannel()`, alias `schedulePlanToRepliz()`, `syncPlanReplizStatus()`, dan `parseMarketingSchedule()`.
+`lib/features/pemasaran/domain.js` adalah shared business logic untuk web + bot: `savePlansToDb()`, `schedulePlanToChannel()`, alias `schedulePlanToRepliz()`, `syncPlanReplizStatus()`, dan `parseMarketingSchedule()`.
 
 | Komponen | Peran |
 |---|---|
@@ -222,7 +221,7 @@ Audit: `lib/agentRuns.js` mencatat run/tool/plans/error/durasi; `lib/evaluationM
 | `lib/features/channels/instagram.js` | Adapter Instagram via `REPLIZ_INSTAGRAM_ACCOUNT_ID` |
 | `lib/features/channels/prompt.js` | Prompt section channel untuk AI |
 | `lib/shared/repliz.js` | HTTP client Repliz |
-| `lib/web/replizJobs.js` | Background sync dan auto-schedule |
+| `lib/features/pemasaran/jobs.js` | Background sync dan auto-schedule |
 
 Repliz menggunakan `REPLIZ_API_KEY`, `REPLIZ_SECRET`, `REPLIZ_ACCOUNT_ID`, `REPLIZ_BASE_URL`; Instagram butuh `ENABLED_CHANNELS=instagram` dan `REPLIZ_INSTAGRAM_ACCOUNT_ID`. Unique index `repliz_schedule_id` mencegah double schedule.
 
@@ -312,7 +311,7 @@ Suite utama mencakup sanitasi media, magic-byte image, AI limits, rate limit, pe
 - Web hanya listen `127.0.0.1`; expose via reverse proxy.
 - `index.html` root hanya placeholder, bukan entry point Express.
 - UI berada di `lib/web/views/`; event binding harus via `addEventListener` di script nonce.
-- Jangan membuat logic pemasaran ganda di web/bot; taruh di `lib/pemasaran.js` atau `lib/actuator/`.
+- Jangan membuat logic pemasaran ganda di web/bot; taruh di `lib/features/pemasaran/domain.js` atau `lib/actuator/`.
 - Untuk channel baru, tambahkan adapter di `lib/features/channels/` dan update prompt/registry/test.
 - Untuk write action AI baru, wajib lewat actuator + policy + audit log.
 - Tambahkan/ubah test saat mengubah security, scheduler, channel, AI tools, atau schema.

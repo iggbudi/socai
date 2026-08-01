@@ -57,20 +57,19 @@ socai/
 │   │   ├── telegramNotify.js  # Notifikasi Telegram
 │   │   └── test/           # Co-located tests (F1)
 │   ├── agent.js            # AI agent, db_query, web_search, sessions
-│   ├── pemasaran.js       # Logik shared pemasaran & Repliz
-│   ├── telegramAccess.js  # Role-based ACL bot
-│   ├── features/           # Vertical slicing (F2/F3/F4)
+│   ├── features/           # Vertical slicing (F2–F5)
 │   │   ├── channels/       # Multi-channel adapter
 │   │   ├── auth/           # Login, logout, CSRF, rate limit
 │   │   ├── dashboard/      # Dashboard page
-│   │   └── produk/         # CRUD produk + upload gambar
+│   │   ├── produk/         # CRUD produk + upload gambar
+│   │   └── pemasaran/      # Domain, routes, jobs, view
+│   ├── telegramAccess.js  # Role-based ACL bot
 │   ├── health.js          # Health check
 │   └── web/               # Modul web (refactor Sprint 3)
 │       ├── createApp.js   # Factory Express
 │       ├── middleware/    # csrf, csp
 │       ├── routes/        # pages, health, api/*
-│       ├── views/         # HTML templates (nonce CSP)
-│       └── replizJobs.js  # Auto sync & auto schedule
+│       └── views/         # HTML templates (nonce CSP)
 ├── test/                  # Unit & smoke tests
 ├── public/uploads/        # Gambar upload lokal
 ├── telegram-users.json    # Allowlist & role bot
@@ -135,7 +134,7 @@ flowchart TB
     subgraph Application["Lapisan Aplikasi"]
         EXP["Express lib/web\nREST API + SSE"]
         BOT["telegram-bot.js"]
-        JOBS["replizJobs\nauto-schedule & sync"]
+        JOBS["features/pemasaran/jobs\nauto-schedule & sync"]
     end
 
     subgraph Agent["Lapisan AI Agent"]
@@ -172,7 +171,7 @@ flowchart TB
 | Prinsip | Implementasi |
 |---------|--------------|
 | **Bounded autonomy** | `db_query` SELECT-only; write via actuator + `AUTONOMY_MODE` (`assistive` / `supervised` / `bounded`) |
-| **Shared core** | `lib/shared/db.js` (pools), `lib/agent.js`, `lib/pemasaran.js`, `lib/actuator/` dipakai web & bot |
+| **Shared core** | `lib/shared/db.js` (pools), `lib/agent.js`, `lib/features/pemasaran/domain.js`, `lib/actuator/` dipakai web & bot |
 | **Defense in depth** | CSRF, CSP nonce, rate limit, role ACL, URL whitelist, policy caps |
 | **Observability** | Setiap agent run & tool call tercatat di `agent_runs` |
 | **Human-in-the-loop** | Default `assistive`; supervised/bounded untuk skenario penelitian |
@@ -312,7 +311,7 @@ sequenceDiagram
     actor Operator
     participant UI as Web / Bot
     participant API as pemasaran routes
-    participant PEM as lib/pemasaran.js
+    participant PEM as lib/features/pemasaran/domain.js
     participant REP as lib/shared/repliz.js
     participant DB as PostgreSQL
     participant Threads as Threads via Repliz
@@ -408,12 +407,12 @@ flowchart TB
         MW[middleware/*]
         RT[routes/*]
         VW[views/*]
-        RJ[replizJobs.js]
+        RJ[features/pemasaran/jobs.js]
     end
 
     subgraph SharedLib["lib/ shared"]
         AGT[agent.js]
-        PEM[pemasaran.js]
+        PEM[features/pemasaran/domain.js]
         REP[shared/repliz.js]
         TAC[telegramAccess.js]
         ENV[env.js]

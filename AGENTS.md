@@ -84,10 +84,10 @@ Copy `.env.example` → `.env` before running. Web validates env on startup via 
 | `lib/agent.js` | AI agent (`@earendil-works/pi-coding-agent`), session map, `initAgent()`, tools `db_query` (SELECT-only), `web_search`, actuator tools (`get_calendar_gaps`, `save_content_plan`, `schedule_content`, `sync_content_status`), active run context exports |
 | `lib/agentRuns.js` | Research audit log: `initAgentRunsSchema`, `createAgentRun`, `logToolCall`, `completeAgentRun`, `getAgentRunMetrics`, `listAgentRuns` |
 | `lib/evaluationMetrics.js` | Metrik penelitian M1–M7: `getEvaluationMetrics()`, `resolveEvaluationPeriod()` |
-| `lib/actuator/` | Bounded autonomy layer: `resolveAutonomyMode`, policy checks, wrappers around `pemasaran.js` write paths |
+| `lib/actuator/` | Bounded autonomy layer: `resolveAutonomyMode`, policy checks, wrappers around `lib/features/pemasaran/` write paths |
 | `lib/features/channels/` | Multi-channel adapter: `registry.js`, `threads.js`, `instagram.js`, `getChannel()`, `listChannels()`, `buildChannelsPromptSection()` |
-| `lib/features/` | Vertical slicing: satu folder per fitur (F2: `channels`; F3: `auth` + `dashboard`; F4: `produk`; F5+: pemasaran, agent, telegram) — domain/API/view/test co-located |
-| `lib/pemasaran.js` | Shared pemasaran/Repliz logic: `savePlansToDb`, `schedulePlanToChannel` (alias `schedulePlanToRepliz`), `syncPlanReplizStatus`, `parseMarketingSchedule` |
+| `lib/features/` | Vertical slicing: satu folder per fitur (F2: `channels`; F3: `auth` + `dashboard`; F4: `produk`; F5: `pemasaran`; F6+: agent, telegram) — domain/API/view/test co-located |
+| `lib/features/pemasaran/` | Shared pemasaran/Repliz logic (web + bot + agent): `domain.js` (`savePlansToDb`, `schedulePlanToChannel` alias `schedulePlanToRepliz`, `syncPlanReplizStatus`, `parseMarketingSchedule`), `routes.js`, `jobs.js` (background Repliz sync/auto-schedule), `view.js` |
 | `lib/shared/mediaUrl.js` | `sanitizeImageUrl()` — HTTPS whitelist, blocks `javascript:`/`data:`/`http://`, allows `/uploads/...` |
 | `lib/shared/imageFile.js` | Magic-byte detection (`jpeg`/`png`/`gif`/`webp`), `assertValidImageBuffer()` |
 | `lib/shared/rateLimit.js` | `createRateLimiter()` — Express middleware + standalone check/consume |
@@ -105,7 +105,7 @@ Copy `.env.example` → `.env` before running. Web validates env on startup via 
 | `lib/autonomousJobs.js` | Weekly plan cron, publish feedback refresh, agent_runs purge |
 | `lib/scheduleApproval.js` | `REQUIRE_APPROVAL` flow + Telegram approve/reject |
 | `lib/publishFeedback.js` | Publish outcome cache injected into agent system prompt |
-| `lib/web/` | Web app modules: `createApp.js` (Express factory), `middleware/` (auth, CSRF, CSP nonce, login rate limit, upload), `routes/` (pages + API), `views/` (HTML templates), `replizJobs.js` (background Repliz sync/schedule) |
+| `lib/web/` | Web app modules: `createApp.js` (Express factory), `middleware/` (CSRF, CSP nonce), `routes/` (pages + health + API sisa), `views/` (sisa view) |
 
 **Entry points:** `server.js` (thin bootstrap: env validation, schema init, `createWebApp()`, listen, shutdown), `telegram-bot.js` (access control via `lib/telegramAccess.js` + `telegram-users.json`, wizards, Repliz commands).
 

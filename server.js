@@ -9,7 +9,7 @@ import {
   autoSchedulePendingRepliz,
   replizAutoScheduleLimit,
   replizAutoScheduleLeadMs,
-} from './lib/web/replizJobs.js';
+} from './lib/features/pemasaran/jobs.js';
 import {
   generateWeeklyPlans,
   runAgentRunsPurge,
