@@ -30,6 +30,8 @@ npm run test:coverage  # unit tests + gated coverage (lines 41 / funcs 57 / bran
 npm run lint       # ESLint 9 (flat config, `eslint.config.js`) — dijalankan di CI
 npm run format     # Prettier write (ubah file)
 npm run format:check # Prettier read-only check — gate CI
+npm run migrate:up  # apply pending versioned PostgreSQL migrations
+npm run migrate:down # rollback one migration (maintenance only)
 npm run eval:export  # export metrik penelitian M1–M7 (JSON)
 ```
 
@@ -84,7 +86,7 @@ Copy `.env.example` → `.env` before running. Web validates env on startup via 
 | Module | Role |
 |--------|------|
 | `lib/shared/db.js` | PostgreSQL pools (shared infra): `pool` (write), `aiReadPool` (read-only untuk AI `db_query`), `closeAgentPools()` — tanpa import dari `lib/features/` |
-| `lib/shared/` | Shared infra per fitur (F0/F1): `db.js`, `wibTime.js`, `rateLimit.js`, `mediaUrl.js`, `imageFile.js`, `html.js`, `repliz.js`, `telegramNotify.js` + co-located test di `lib/shared/test/` |
+| `lib/shared/` | Shared infra per fitur (F0/F1): `db.js`, `schema.js`, `wibTime.js`, `rateLimit.js`, `mediaUrl.js`, `imageFile.js`, `html.js`, `repliz.js`, `telegramNotify.js` + co-located test di `lib/shared/test/` |
 | `lib/features/agent/core.js` | AI agent (`@earendil-works/pi-coding-agent`), session map, `initAgent()`, tools `db_query` (SELECT-only), `web_search`, actuator tools (`get_calendar_gaps`, `save_content_plan`, `schedule_content`, `sync_content_status`), active run context exports |
 | `lib/features/agent/runs.js` | Research audit log: `initAgentRunsSchema`, `createAgentRun`, `logToolCall`, `completeAgentRun`, `getAgentRunMetrics`, `listAgentRuns` |
 | `lib/features/agent/routes.js` | SSE `/api/asisten` + `/api/agent/runs`; route registration menerima optional `deps` untuk fake pool/session/auth/limiter pada test |
@@ -104,7 +106,7 @@ Copy `.env.example` → `.env` before running. Web validates env on startup via 
 | `lib/features/produk/` | CRUD produk + upload gambar: `routes.js` (`registerProdukRoutes` + `registerUploadRoutes`), `upload.js` (multer 5MB + magic-byte), `view.js` (`produkPage`) |
 | `lib/features/telegram/access.js` | `createTelegramAccess()` — role-based ACL (`super_admin` > `operator` > `viewer`), migrates legacy `allowed_user_ids[]` |
 | `lib/features/telegram/` | Fitur bot (F8/S23): `bot.js` (`createBot`, `startBot` tanpa auto-launch), `commands.js` (wiring Telegraf), `helpers/format.js`, `media/cloudinary.js`, `wizards/`, `schedule.js`, `schema.js`, `helpers.js`, `access.js`, `test/` |
-| `lib/web/health.js` | `collectHealthStatus()` — DB ping + optional config flags (`?detail=1`) |
+| `lib/web/health.js` | `collectHealthStatus()` — DB ping, migration guard (`checks.schema`), + optional config flags (`?detail=1`) |
 | `lib/features/agent/runs.js` | `agent_runs` audit log: create/log/complete runs, metrics, purge |
 | `lib/features/agent/actuator/` | Bounded actuator tools + `AUTONOMY_MODE` policy |
 | `lib/features/agent/runner.js` | `runAgentTask()` — programmatic agent prompt (cron/chat) |
@@ -113,13 +115,15 @@ Copy `.env.example` → `.env` before running. Web validates env on startup via 
 | `lib/features/agent/publishFeedback.js` | Publish outcome cache injected into agent system prompt |
 | `lib/web/` | Web app shell murni: `createApp.js` (Express factory), `middleware/` (CSRF, CSP nonce), `routes/` (pages, health), `health.js` |
 
-**Entry points:** `server.js` (thin bootstrap: env validation, schema init, `createWebApp()`, listen, shutdown), `telegram-bot.js` (thin entry → `startBot()`; importing `lib/features/telegram/bot.js` alone tidak meluncurkan polling). Factory `createBot()` menyediakan dependency seams untuk test fake Telegraf/DB/AI.
+**Entry points:** `server.js` (thin bootstrap: env validation, `createWebApp()`, listen, background jobs, shutdown; schema migration bukan runtime boot step), `telegram-bot.js` (thin entry → `startBot()`; importing `lib/features/telegram/bot.js` alone tidak meluncurkan polling). Factory `createBot()` menyediakan dependency seams untuk test fake Telegraf/DB/AI.
 
 **Route testability convention (S21):** feature route registration yang memakai global pool/agent dependency wajib menyediakan optional `deps` dengan default production yang identik; handler SSE/API yang beralur kompleks diekspor sebagai fungsi bernama agar dapat diuji memakai fake pool/session tanpa database, model, atau jaringan.
 
 **Coverage gate convention (S22):** setelah gate ditetapkan, ambang coverage di `package.json` hanya boleh dinaikkan. Penurunan ambang wajib memiliki alasan tertulis di `logbook.md`; gate saat ini adalah **41% lines / 57% functions / 68% branches**. S22 mencatat pengecualian satu kali dari 58% ke 57% functions karena clean GitHub Actions runner mengukur 57,55% sementara local runner mengukur 57,91–58,27%.
 
 **Telegram testability convention (S23):** `bot.js` hanya factory/startup (201 baris); command wiring ada di `commands.js`, sedangkan logika format/media/wizard/schedule/schema berada di modul terpisah dan menerima dependency yang diperlukan. `botFactory.test.js` memakai fake Telegraf tanpa `launch()`; wiring `commands.js` dikecualikan dari agregat coverage native Node melalui `--test-coverage-exclude`, tetapi daftar command/event/action tetap diverifikasi oleh test.
+
+**Migration convention (S24):** semua DDL baru wajib masuk ke `migrations/` dan dijalankan eksplisit lewat `npm run migrate:up`; `server.js` dan bot tidak boleh membuat/mengubah tabel saat boot. `migrations.config.js` memetakan `DB_HOST`, `DB_NAME`, `DB_PORT`, `DB_USER`, dan `DB_PASSWORD` tanpa menambah `DATABASE_URL`. `/health` mengembalikan `checks.schema.status` (`ok`/`pending`) dan HTTP 503 bila versi belum terpenuhi.
 
 ## Security (P0+P1 summary)
 
@@ -140,7 +144,7 @@ Copy `.env.example` → `.env` before running. Web validates env on startup via 
 ```sql
 -- users: id, username, password (bcrypt)
 -- produk: id, nama, harga, stok, gambar, deskripsi, created_at, updated_at
--- pemasaran (base + Repliz columns, migrated via initPemasaranReplizSchema):
+-- pemasaran (base + Repliz columns, versioned via migrations/0001_baseline_pemasaran_repliz.js):
 --   id, judul, strategi, target_audiens, kanal, jadwal, copywriting, produk_terkait, created_at
 --   gambar, status (default 'draft'), scheduled_at, published_at
 --   external_post_id, external_status, last_error
@@ -148,7 +152,7 @@ Copy `.env.example` → `.env` before running. Web validates env on startup via 
 --   repliz_last_error, repliz_synced_at, repliz_attempts (default 0)
 --   auto_schedule_enabled (default true)
 -- user_sessions: managed by connect-pg-simple
--- agent_runs: id, run_id, session_key, source, autonomy_mode, trigger_type, user_prompt,
+-- agent_runs (versioned via migrations/0002_baseline_agent_runs.js): id, run_id, session_key, source, autonomy_mode, trigger_type, user_prompt,
 --   status, model_ref, tools_called (jsonb), plans_saved, plans_scheduled, pemasaran_ids,
 --   error_message, started_at, ended_at, duration_ms
 ```
@@ -168,7 +172,7 @@ Copy `.env.example` → `.env` before running. Web validates env on startup via 
 | GET | `/evaluasi` | Yes | Research metrics dashboard (M1–M7) |
 | POST | `/logout` | Yes | Destroy session + agent (CSRF `_csrf` required) |
 | GET | `/logout` | No | Redirect → `/dashboard` (legacy bookmark) |
-| GET | `/health` | No | `{ status: 'ok', ... }` |
+| GET | `/health` | No | Health JSON; `checks.schema.status` is `ok`/`pending` |
 
 ### Web API (`/api/*` — CSRF on POST/PUT/DELETE)
 
@@ -210,6 +214,7 @@ Copy `.env.example` → `.env` before running. Web validates env on startup via 
 - **AI DB writes** — `db_query` remains SELECT-only; bounded writes via actuator tools (`save_content_plan`, `schedule_content`) gated by `AUTONOMY_MODE`; manual paths still available via web UI or bot wizards
 - **`AUTONOMY_MODE`** — default `assistive` (safe); set `supervised`/`bounded` for research scenarios; see `autonomous.md`
 - **`DB_AI_READ_*`** — without dedicated read-only user, `db_query` runs as `DB_USER` (warned at startup)
+- **Schema migrations** — run `npm run migrate:up` before restarting services; pending `pgmigrations` makes `/health` return HTTP 503 and prevents Telegram bot startup
 - **Repliz optional** — scheduling commands no-op/error if `REPLIZ_*` unset; background sync/auto-schedule in `server.js` when configured
 - **`ENABLED_CHANNELS`** — default `threads`; enable `instagram` only when `REPLIZ_INSTAGRAM_ACCOUNT_ID` is set
 - **Cloudinary optional** — Telegram wizard falls back to local `public/uploads/` if unset

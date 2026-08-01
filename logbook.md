@@ -887,10 +887,47 @@ Membuat bot Telegram dapat diuji tanpa long polling, lalu memecah logika monolit
 - `npm run lint` → **0 error, 0 warning**.
 - `npm run format:check` → lulus setelah baseline Prettier.
 - `wc -l lib/features/telegram/bot.js` → **201 baris** (<400).
-- `systemctl is-active socai-bot` → **active** sebelum verifikasi restart. Restart produksi gagal dengan `Interactive authentication required`; owner/admin harus menjalankan restart lalu smoke `/status`, `/listproduk`, wizard `tambahproduk`, dan `/jadwalkonten`.
+- `systemctl is-active socai-bot` → **active** sebelum verifikasi restart. Percobaan awal dari sesi agent gagal dengan `Interactive authentication required`; follow-up 2 Agustus berhasil memakai `sudo -n`, lalu smoke web/bot dan Telegram startup lulus.
 
 ### Commit
 
 | Commit | Pesan |
 |--------|-------|
 | `(this commit)` | `refactor(telegram): split bot factory, commands, wizards, media, schedule, schema (R3)` |
+
+---
+
+## Sprint 24 — Migrasi Skema Berversi (R4) (2 Agustus 2026)
+
+### Tujuan
+
+Memindahkan DDL dari boot path aplikasi ke migration yang berversi, auditable, dan dapat di-rollback.
+
+### Perubahan
+
+- Menambahkan `node-pg-migrate@9.0.0`, `migrations.config.js`, dan scripts `migrate`, `migrate:up`, serta `migrate:down`.
+- Menambahkan baseline `migrations/0001_baseline_pemasaran_repliz.js` (14 kolom Repliz + unique index) dan `migrations/0002_baseline_agent_runs.js` (tabel + 3 index), masing-masing dengan `down` eksplisit.
+- Menghapus `initPemasaranReplizSchema()` dan pemanggilan `initAgentRunsSchema()` dari `server.js`; web sekarang langsung `app.listen()` setelah membuat app.
+- Mengubah startup Telegram dari DDL `ensureMarketingSchema` menjadi guard `ensureSchemaReady()` berbasis `pgmigrations`.
+- Menambahkan `lib/shared/schema.js` dan `lib/web/health.js` schema guard; `/health` mengembalikan `checks.schema.status` (`ok`/`pending`) dan HTTP 503 jika migration tertinggal.
+- Menambahkan test health/schema dan memasukkan `lib/web/**/*.test.js` ke glob test/coverage.
+- Memperbarui `AGENTS.md`, `README.md`, `CODEBASE_WIKI.md`, `deploy/README.md`, dan sprint plan dengan urutan deploy manual: `git pull` → `npm ci` → `npm run migrate:up` → restart.
+
+### Verifikasi
+
+- `npm run migrate -- up --dry-run` dan `npm run migrate -- down 1 --dry-run` lulus; down production tidak dijalankan agar data tetap aman.
+- `pg_dump --schema-only` sebelum/sesudah production identik selain token `pg_dump`; baseline hanya mencatat `0001_baseline_pemasaran_repliz` dan `0002_baseline_agent_runs` di `pgmigrations`.
+- `npm run test:ci` → **145/145 pass + QA PASSED**.
+- `npm run lint` → **0 error, 0 warning**; `npm run format:check` → lulus.
+- `npm run test:coverage` → **145/145 pass**, **55,88% line / 79,93% branch / 75,73% funcs**, gate 41/57/68 lulus.
+- Production restart `socai-node` + `socai-bot` sukses; local/public `/health` dan `/health?detail=1` menunjukkan database ok dan `schema.status=ok`; `/login` HTTP 200; log mengonfirmasi web listening, DB connected, bot long polling, dan command sync.
+
+### Keputusan deploy
+
+Migration tidak dipasang sebagai `ExecStartPre` systemd karena user runtime tidak boleh membutuhkan hak DDL. Langkah migration manual/CD terpisah wajib sukses sebelum restart service.
+
+### Commit
+
+| Commit | Pesan |
+|--------|-------|
+| `(this commit)` | `feat(db): versioned migrations, remove DDL from boot path (R4)` |

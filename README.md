@@ -45,6 +45,8 @@ Aplikasi menggabungkan **web dashboard**, **bot Telegram**, **AI agent berbasis 
 socai/
 ├── server.js              # Bootstrap web + Repliz background jobs
 ├── telegram-bot.js        # Entry tipis → startBot() (tanpa auto-launch saat import)
+├── migrations/             # Versioned PostgreSQL DDL (S24)
+├── migrations.config.js    # DB_* mapping untuk node-pg-migrate
 ├── lib/
 │   ├── shared/             # Shared infra (F0/F1)
 │   │   ├── db.js           # pool + aiReadPool
@@ -54,6 +56,7 @@ socai/
 │   │   ├── mediaUrl.js     # Sanitasi URL gambar
 │   │   ├── imageFile.js    # Magic-byte image validation
 │   │   ├── html.js         # escapeHtml
+│   │   ├── schema.js       # Migration version/status guard
 │   │   ├── telegramNotify.js  # Notifikasi Telegram
 │   │   └── test/           # Co-located tests (F1)
 │   ├── agent.js            # AI agent, db_query, web_search, sessions
@@ -619,6 +622,21 @@ cp .env.example .env
 npm install
 ```
 
+### Migrasi skema
+
+DDL tidak dijalankan saat web atau bot boot. Jalankan migrasi eksplisit setelah
+`npm ci`/`npm install` dan sebelum restart service; `migrations.config.js`
+menggunakan `DB_HOST`, `DB_NAME`, `DB_PORT`, `DB_USER`, dan `DB_PASSWORD` dari
+`.env` (tidak memerlukan `DATABASE_URL`).
+
+```bash
+npm run migrate:up       # apply pending migrations
+npm run migrate:down     # rollback satu migration (maintenance/rollback)
+```
+
+`/health` melaporkan `checks.schema.status` (`ok` atau `pending`) dan
+mengembalikan HTTP 503 bila versi migration belum terpenuhi.
+
 ### Setup database read-only (disarankan)
 
 ```bash
@@ -638,6 +656,7 @@ npm run test:coverage # Coverage dengan threshold CI
 npm run lint       # ESLint
 npm run format:check # Prettier check (CI gate)
 npm run format     # Prettier write
+npm run migrate:up # Apply migration sebelum start production
 node test/qa-smoke.mjs   # Smoke test CSP & HTTP
 ```
 
@@ -646,6 +665,9 @@ node test/qa-smoke.mjs   # Smoke test CSP & HTTP
 Template unit + runbook: `deploy/` (`socai-node.service`, `socai-bot.service`, `README.md`).
 
 ```bash
+git pull
+npm ci
+npm run migrate:up
 sudo systemctl start socai-node socai-bot
 sudo systemctl status socai-node socai-bot
 ```

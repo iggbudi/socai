@@ -1,8 +1,7 @@
 import 'dotenv/config';
 import { validateWebEnvironment } from './lib/env.js';
-import { pool, closeAgentPools } from './lib/shared/db.js';
+import { closeAgentPools } from './lib/shared/db.js';
 import { agentSessions, agentSessionLastUsed, agentSessionPromises } from './lib/features/agent/core.js';
-import { initAgentRunsSchema } from './lib/features/agent/runs.js';
 import { createWebApp } from './lib/web/createApp.js';
 import {
   syncPendingReplizStatuses,
@@ -19,32 +18,6 @@ import {
 } from './lib/features/agent/autonomousJobs.js';
 
 validateWebEnvironment();
-
-async function initPemasaranReplizSchema() {
-  await pool.query(`
-    ALTER TABLE IF EXISTS pemasaran
-      ADD COLUMN IF NOT EXISTS gambar text,
-      ADD COLUMN IF NOT EXISTS status text DEFAULT 'draft',
-      ADD COLUMN IF NOT EXISTS scheduled_at timestamptz,
-      ADD COLUMN IF NOT EXISTS published_at timestamptz,
-      ADD COLUMN IF NOT EXISTS external_post_id text,
-      ADD COLUMN IF NOT EXISTS external_status text,
-      ADD COLUMN IF NOT EXISTS last_error text,
-      ADD COLUMN IF NOT EXISTS repliz_schedule_id text,
-      ADD COLUMN IF NOT EXISTS repliz_status text,
-      ADD COLUMN IF NOT EXISTS repliz_scheduled_at timestamptz,
-      ADD COLUMN IF NOT EXISTS repliz_last_error text,
-      ADD COLUMN IF NOT EXISTS repliz_synced_at timestamptz,
-      ADD COLUMN IF NOT EXISTS repliz_attempts integer DEFAULT 0,
-      ADD COLUMN IF NOT EXISTS auto_schedule_enabled boolean DEFAULT true
-  `);
-
-  await pool.query(`
-    CREATE UNIQUE INDEX IF NOT EXISTS pemasaran_repliz_schedule_id_uq
-      ON pemasaran (repliz_schedule_id)
-      WHERE repliz_schedule_id IS NOT NULL
-  `);
-}
 
 const { app, port, trackInterval, intervalHandles, replizSyncIntervalMs, replizAutoScheduleIntervalMs } =
   createWebApp();
@@ -101,87 +74,78 @@ function shutdown(signal) {
 process.once('SIGINT', () => shutdown('SIGINT'));
 process.once('SIGTERM', () => shutdown('SIGTERM'));
 
-Promise.all([initPemasaranReplizSchema(), initAgentRunsSchema(pool)])
-  .then(() => {
-    httpServer = app.listen(port, '127.0.0.1', () => {
-      console.log(`socai.my.id listening on http://127.0.0.1:${port}`);
-    });
-    if (Number.isFinite(replizAutoScheduleIntervalMs) && replizAutoScheduleIntervalMs > 0) {
-      let autoScheduleRunning = false;
-      const runAutoSchedule = async () => {
-        if (autoScheduleRunning) return;
-        autoScheduleRunning = true;
-        try {
-          const result = await autoSchedulePendingRepliz();
-          if (!result.skipped && (result.scheduled > 0 || result.failed > 0)) {
-            console.log(
-              `[Repliz] Auto schedule done: scheduled=${result.scheduled}, failed=${result.failed}`,
-            );
-          }
-        } catch (err) {
-          console.error('[Repliz] Auto schedule error:', err.message);
-        } finally {
-          autoScheduleRunning = false;
+httpServer = app.listen(port, '127.0.0.1', () => {
+  console.log(`socai.my.id listening on http://127.0.0.1:${port}`);
+  if (Number.isFinite(replizAutoScheduleIntervalMs) && replizAutoScheduleIntervalMs > 0) {
+    let autoScheduleRunning = false;
+    const runAutoSchedule = async () => {
+      if (autoScheduleRunning) return;
+      autoScheduleRunning = true;
+      try {
+        const result = await autoSchedulePendingRepliz();
+        if (!result.skipped && (result.scheduled > 0 || result.failed > 0)) {
+          console.log(`[Repliz] Auto schedule done: scheduled=${result.scheduled}, failed=${result.failed}`);
         }
-      };
-      setTimeout(runAutoSchedule, 30_000);
-      trackInterval(runAutoSchedule, replizAutoScheduleIntervalMs);
-      console.log(
-        `[Repliz] Auto schedule enabled every ${Math.round(replizAutoScheduleIntervalMs / 1000)}s, limit=${replizAutoScheduleLimit}, lead=${Math.round(replizAutoScheduleLeadMs / 60000)}m`,
-      );
-    } else {
-      console.log('[Repliz] Auto schedule disabled (REPLIZ_AUTO_SCHEDULE_INTERVAL_MS <= 0)');
-    }
+      } catch (err) {
+        console.error('[Repliz] Auto schedule error:', err.message);
+      } finally {
+        autoScheduleRunning = false;
+      }
+    };
+    setTimeout(runAutoSchedule, 30_000);
+    trackInterval(runAutoSchedule, replizAutoScheduleIntervalMs);
+    console.log(
+      `[Repliz] Auto schedule enabled every ${Math.round(replizAutoScheduleIntervalMs / 1000)}s, limit=${replizAutoScheduleLimit}, lead=${Math.round(replizAutoScheduleLeadMs / 60000)}m`,
+    );
+  } else {
+    console.log('[Repliz] Auto schedule disabled (REPLIZ_AUTO_SCHEDULE_INTERVAL_MS <= 0)');
+  }
 
-    if (Number.isFinite(replizSyncIntervalMs) && replizSyncIntervalMs > 0) {
-      trackInterval(() => {
-        syncPendingReplizStatuses().catch((err) => console.error('[Repliz] Auto sync error:', err.message));
-      }, replizSyncIntervalMs);
-      console.log(`[Repliz] Auto sync enabled every ${Math.round(replizSyncIntervalMs / 1000)}s`);
-    } else {
-      console.log('[Repliz] Auto sync disabled (REPLIZ_SYNC_INTERVAL_MS <= 0)');
-    }
+  if (Number.isFinite(replizSyncIntervalMs) && replizSyncIntervalMs > 0) {
+    trackInterval(() => {
+      syncPendingReplizStatuses().catch((err) => console.error('[Repliz] Auto sync error:', err.message));
+    }, replizSyncIntervalMs);
+    console.log(`[Repliz] Auto sync enabled every ${Math.round(replizSyncIntervalMs / 1000)}s`);
+  } else {
+    console.log('[Repliz] Auto sync disabled (REPLIZ_SYNC_INTERVAL_MS <= 0)');
+  }
 
-    runPublishFeedbackRefresh().catch((err) => {
-      console.error('[PublishFeedback] Initial refresh error:', err.message);
-    });
-
-    if (Number.isFinite(autoPlanCronIntervalMs) && autoPlanCronIntervalMs > 0) {
-      let autoPlanRunning = false;
-      const runAutoPlan = async () => {
-        if (autoPlanRunning) return;
-        autoPlanRunning = true;
-        try {
-          const result = await generateWeeklyPlans();
-          if (!result.skipped) {
-            console.log(`[AutoPlan] Cron done: gaps=${result.gapCount}, textLen=${result.textLength || 0}`);
-          }
-        } catch (err) {
-          console.error('[AutoPlan] Cron error:', err.message);
-        } finally {
-          autoPlanRunning = false;
-        }
-      };
-      setTimeout(runAutoPlan, 60_000);
-      trackInterval(runAutoPlan, autoPlanCronIntervalMs);
-      console.log(`[AutoPlan] Weekly plan cron enabled every ${Math.round(autoPlanCronIntervalMs / 1000)}s`);
-    } else {
-      console.log('[AutoPlan] Weekly plan cron disabled (AUTO_PLAN_CRON_INTERVAL_MS <= 0)');
-    }
-
-    if (Number.isFinite(agentRunsPurgeIntervalMs) && agentRunsPurgeIntervalMs > 0) {
-      const runPurge = async () => {
-        const result = await runAgentRunsPurge();
-        if (result.deleted > 0) {
-          console.log(`[AgentRuns] Purge cycle removed ${result.deleted} rows`);
-        }
-      };
-      setTimeout(runPurge, 120_000);
-      trackInterval(runPurge, agentRunsPurgeIntervalMs);
-      console.log(`[AgentRuns] Purge enabled every ${Math.round(agentRunsPurgeIntervalMs / 1000)}s`);
-    }
-  })
-  .catch((err) => {
-    console.error('Failed to initialize database schema:', err.message);
-    process.exit(1);
+  runPublishFeedbackRefresh().catch((err) => {
+    console.error('[PublishFeedback] Initial refresh error:', err.message);
   });
+
+  if (Number.isFinite(autoPlanCronIntervalMs) && autoPlanCronIntervalMs > 0) {
+    let autoPlanRunning = false;
+    const runAutoPlan = async () => {
+      if (autoPlanRunning) return;
+      autoPlanRunning = true;
+      try {
+        const result = await generateWeeklyPlans();
+        if (!result.skipped) {
+          console.log(`[AutoPlan] Cron done: gaps=${result.gapCount}, textLen=${result.textLength || 0}`);
+        }
+      } catch (err) {
+        console.error('[AutoPlan] Cron error:', err.message);
+      } finally {
+        autoPlanRunning = false;
+      }
+    };
+    setTimeout(runAutoPlan, 60_000);
+    trackInterval(runAutoPlan, autoPlanCronIntervalMs);
+    console.log(`[AutoPlan] Weekly plan cron enabled every ${Math.round(autoPlanCronIntervalMs / 1000)}s`);
+  } else {
+    console.log('[AutoPlan] Weekly plan cron disabled (AUTO_PLAN_CRON_INTERVAL_MS <= 0)');
+  }
+
+  if (Number.isFinite(agentRunsPurgeIntervalMs) && agentRunsPurgeIntervalMs > 0) {
+    const runPurge = async () => {
+      const result = await runAgentRunsPurge();
+      if (result.deleted > 0) {
+        console.log(`[AgentRuns] Purge cycle removed ${result.deleted} rows`);
+      }
+    };
+    setTimeout(runPurge, 120_000);
+    trackInterval(runPurge, agentRunsPurgeIntervalMs);
+    console.log(`[AgentRuns] Purge enabled every ${Math.round(agentRunsPurgeIntervalMs / 1000)}s`);
+  }
+});

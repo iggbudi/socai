@@ -318,7 +318,7 @@ Smoke manual di Telegram: `/status`, `/listproduk`, wizard `tambahproduk` (sampa
 
 **Hasil aktual S23**: factory dan ekstraksi selesai; 140 test lulus; `bot.js` menjadi **201 baris**; coverage agregat lokal **55,30% line / 79,58% branch / 75,30% funcs** setelah wiring `commands.js` dikecualikan dari agregat; verifikasi systemd/smoke Telegram harus dicatat setelah owner menjalankan restart produksi.
 
-**Status verifikasi produksi (2 Agustus 2026)**: `socai-bot.service` terdeteksi **active**, tetapi `systemctl restart socai-bot` dari sesi agent gagal dengan `Interactive authentication required`. Owner/admin wajib menjalankan restart dan smoke Telegram sebelum DoD produksi dianggap lengkap.
+**Status verifikasi produksi (2 Agustus 2026)**: restart `socai-node.service` dan `socai-bot.service` berhasil dengan `sudo -n`; health lokal/publik, login publik, database, dan Telegram long polling/command sync terverifikasi. S23 DoD produksi lengkap.
 
 **Risiko**: **tertinggi di dokumen ini.** Bot berjalan di produksi; regresi = wizard rusak untuk user nyata.
 **Mitigasi**:
@@ -335,35 +335,35 @@ Smoke manual di Telegram: `/status`, `/listproduk`, wizard `tambahproduk` (sampa
 
 **Tujuan**: keluarkan DDL dari boot path aplikasi; skema jadi berversi, auditable, dan bisa di-rollback.
 
-**Konteks**: `server.js:23–47` menjalankan `ALTER TABLE ... ADD COLUMN IF NOT EXISTS` (14 kolom) +
+**Konteks**: sebelum S24, `server.js:23–47` menjalankan `ALTER TABLE ... ADD COLUMN IF NOT EXISTS` (14 kolom) +
 `CREATE UNIQUE INDEX IF NOT EXISTS` setiap kali proses start, dan `initAgentRunsSchema(pool)`
 (`lib/features/agent/runs.js:18–49`) melakukan hal serupa. Idempoten, tapi:
 tidak berversi, tidak bisa rollback, tidak bisa mengubah tipe kolom / backfill,
 dan menunda `app.listen()` di setiap restart.
 
 **Tasks (tooling)**
-- [ ] `npm i -D node-pg-migrate` (devDependency — migrasi dijalankan sebagai langkah deploy, bukan runtime app)
-- [ ] `migrations/` + `package.json` scripts:
+- [x] `npm i -D node-pg-migrate` (devDependency — migrasi dijalankan sebagai langkah deploy, bukan runtime app)
+- [x] `migrations/` + `migrations.config.js` + `package.json` scripts:
       `"migrate": "node-pg-migrate -j js -m migrations"`, `"migrate:up": "npm run migrate -- up"`, `"migrate:down": "npm run migrate -- down 1"`
-- [ ] Konfigurasi koneksi dari env yang sudah ada (`DB_HOST/DB_NAME/DB_PORT/DB_USER/DB_PASSWORD`) —
+- [x] Konfigurasi koneksi dari env yang sudah ada (`DB_HOST/DB_NAME/DB_PORT/DB_USER/DB_PASSWORD`) —
       **jangan** tambah variabel `DATABASE_URL` baru tanpa memperbarui `lib/env.js` + `.env.example`.
 
 **Tasks (migrasi)**
-- [ ] `migrations/0001_baseline_pemasaran_repliz.js` — salin persis 14 `ADD COLUMN IF NOT EXISTS` + unique index dari `server.js:24–46`, dengan `down` yang eksplisit
-- [ ] `migrations/0002_baseline_agent_runs.js` — dari `initAgentRunsSchema` (`runs.js:18–49`)
-- [ ] Jalankan di database produksi: karena semua DDL `IF NOT EXISTS`, migrasi baseline **no-op**
+- [x] `migrations/0001_baseline_pemasaran_repliz.js` — salin persis 14 `ADD COLUMN IF NOT EXISTS` + unique index dari `server.js:24–46`, dengan `down` yang eksplisit
+- [x] `migrations/0002_baseline_agent_runs.js` — dari `initAgentRunsSchema` (`runs.js:18–49`)
+- [x] Jalankan di database produksi: karena semua DDL `IF NOT EXISTS`, migrasi baseline **no-op**
       pada DB yang sudah terisi — efeknya hanya mencatat versi di tabel `pgmigrations`.
       Verifikasi dulu di DB copy: `pg_dump --schema-only` sebelum & sesudah → diff harus kosong.
 
 **Tasks (aplikasi)**
-- [ ] Hapus `initPemasaranReplizSchema()` dari `server.js`; `Promise.all([...])` → langsung `app.listen()`
-- [ ] Hapus pemanggilan `initAgentRunsSchema(pool)` dari boot path (fungsi boleh tetap ada untuk test fixture)
-- [ ] Tambah **guard versi skema** di `lib/web/health.js`: query `SELECT max(name) FROM pgmigrations`
+- [x] Hapus `initPemasaranReplizSchema()` dari `server.js`; `Promise.all([...])` → langsung `app.listen()`
+- [x] Hapus pemanggilan `initAgentRunsSchema(pool)` dari boot path (fungsi boleh tetap ada untuk test fixture)
+- [x] Tambah **guard versi skema** di `lib/web/health.js`: query `SELECT max(name) FROM pgmigrations`
       → `/health` melaporkan `checks.schema` (`ok` / `pending`) sehingga skema tertinggal terdeteksi cepat
 
 **Tasks (deploy)**
-- [ ] `deploy/README.md` — urutan deploy baru: `git pull` → `npm ci` → **`npm run migrate:up`** → `systemctl restart socai-node socai-bot`
-- [ ] `deploy/socai-node.service` — pertimbangkan `ExecStartPre=/usr/bin/npm run migrate:up`
+- [x] `deploy/README.md` — urutan deploy baru: `git pull` → `npm ci` → **`npm run migrate:up`** → `systemctl restart socai-node socai-bot`
+- [x] `deploy/socai-node.service` — tidak menambahkan `ExecStartPre`; migration tetap manual/terpisah
       (**keputusan**: jangan otomatis bila DB user runtime tidak punya hak DDL — lebih aman langkah manual/CD terpisah; catat pilihan di `logbook.md`)
 
 **Verifikasi**
@@ -385,6 +385,14 @@ curl -s http://127.0.0.1:3010/health | jq .checks   # checks.schema hadir
 **Risiko**: migrasi baseline dijalankan di DB produksi yang sudah punya data.
 **Mitigasi**: semua DDL baseline `IF NOT EXISTS` (no-op); uji di DB copy hasil `pg_dump` lebih dulu;
 backup `pg_dump` sebelum eksekusi produksi; **jangan** jadikan `ExecStartPre` sebelum satu siklus deploy manual sukses.
+
+**Hasil aktual S24 (2 Agustus 2026)**: `node-pg-migrate@9.0.0` terpasang; dua migration
+baseline berhasil dijalankan di production dan tercatat pada `pgmigrations`. Dump schema-only
+sebelum/sesudah identik (selain token `pg_dump`), sehingga tabel existing tidak berubah.
+`server.js` langsung listen tanpa DDL; bot memeriksa migration version sebelum long polling;
+`/health` mengembalikan `checks.schema.status=ok` dengan `latestMigration=0002_baseline_agent_runs`.
+Local suite **145/145 pass**, coverage **55,88% line / 79,93% branch / 75,73% funcs**
+(gate 41/57/68), QA/lint/format lulus; production restart dan smoke web/bot lulus.
 
 ---
 

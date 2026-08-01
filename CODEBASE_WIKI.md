@@ -2,7 +2,7 @@
 
 Dokumentasi codebase untuk project `/var/www/socai.my.id` (**Batik Bakaran** — manajemen produk, pemasaran multi-channel, AI assistant, bounded autonomy, Repliz, dan bot Telegram).
 
-**Terakhir diperbarui:** 1 Agustus 2026  
+**Terakhir diperbarui:** 2 Agustus 2026
 **Repo:** https://github.com/iggbudi/socai.git
 
 Dokumen terkait: `AGENTS.md` (instruksi coding agent), `README.md` (overview + diagram), `autonomous.md` (bounded autonomy), `evaluasi.md` (metrik penelitian), `logbook.md` (catatan pengembangan).
@@ -39,6 +39,7 @@ npm run test:ci           # unit + qa-smoke tanpa HTTP
 npm run test:coverage     # coverage dengan threshold CI
 npm run lint              # ESLint
 npm run format:check     # Prettier check (CI gate)
+npm run migrate:up       # apply versioned PostgreSQL schema
 npm run eval:export       # export metrik penelitian M1–M7 JSON
 ```
 
@@ -56,6 +57,8 @@ Catatan:
 .
 ├── server.js                         # Thin bootstrap web + shutdown
 ├── telegram-bot.js                   # Entry tipis → startBot() (F8/S23)
+├── migrations/                        # Versioned PostgreSQL DDL (S24)
+├── migrations.config.js               # DB_* mapping untuk node-pg-migrate
 ├── package.json                      # Scripts, deps, Node >=24
 ├── AGENTS.md                         # Instruksi agent project
 ├── README.md                         # Overview + diagram sistem
@@ -74,6 +77,7 @@ Catatan:
 │   │   ├── mediaUrl.js                # Sanitasi URL gambar
 │   │   ├── imageFile.js               # Magic-byte image validation
 │   │   ├── html.js                    # escapeHtml
+│   │   ├── schema.js                   # Migration version/status guard
 │   │   ├── telegramNotify.js          # Notifikasi Telegram
 │   │   └── test/                      # Co-located tests (wibTime, mediaUrl)
 │   ├── features/
@@ -126,7 +130,7 @@ Prinsip desain:
 
 ## 5. Web App (`server.js` + `lib/web/`)
 
-`server.js` bertugas load `.env`, validasi environment, init schema, membuat app via `createWebApp()`, menjalankan background jobs, dan graceful shutdown.
+`server.js` bertugas load `.env`, validasi environment, membuat app via `createWebApp()`, menjalankan background jobs, dan graceful shutdown. Schema migration dijalankan eksplisit sebelum service restart, bukan saat boot.
 
 | Modul | Fungsi |
 |---|---|
@@ -141,7 +145,7 @@ Prinsip desain:
 | `middleware/csrf.js` | CSRF Origin/Referer untuk mutasi `/api/*` |
 | `routes/pages.js` | Halaman `/dashboard`, `/produk`, `/pemasaran`, `/asisten`, `/evaluasi` |
 | `routes/health.js` | `/health`, optional `?detail=1` |
-| `health.js` | `collectHealthStatus()` — aggregator status lintas fitur |
+| `health.js` | `collectHealthStatus()` — aggregator DB + status migration (`checks.schema`) + status lintas fitur |
 | `lib/features/pemasaran/jobs.js` | Poll status Repliz dan auto-schedule plan pending |
 ---
 
@@ -160,7 +164,7 @@ Prinsip desain:
 | GET | `/evaluasi` | Yes | Dashboard metrik M1–M7 |
 | POST | `/logout` | Yes | Destroy session + agent; CSRF `_csrf` |
 | GET | `/logout` | No | Redirect legacy ke `/dashboard` |
-| GET | `/health` | No | Health JSON |
+| GET | `/health` | No | Health JSON; `checks.schema.status` = `ok`/`pending` |
 
 ### API
 
@@ -330,14 +334,14 @@ Suite utama mencakup sanitasi media, magic-byte image, AI limits, rate limit, pe
 ## 16. Roadmap Maintenance
 
 - Jaga dokumentasi `CODEBASE_WIKI.md`, `AGENTS.md`, `README.md`, `autonomous.md`, dan `evaluasi.md` tetap sinkron.
-- Pertimbangkan migration runner eksplisit jika schema makin kompleks.
+- Semua DDL baru wajib masuk `migrations/`; jalankan `npm run migrate:up` sebelum restart dan jangan menambah DDL ke boot path.
 - Pertahankan `lib/features/telegram/bot.js` sebagai factory/startup tipis; perubahan command/wizard baru masuk modul terpisah dan ditambah test co-located.
 - Tambahkan adapter channel baru melalui pola `lib/features/channels/*` + tests.
 - Perluas metrics dashboard bila kebutuhan penelitian bertambah.
 
 ---
 
-## 17. Changelog — Sprint Remediasi (1 Agustus 2026)
+## 17. Changelog — Sprint Remediasi (1–2 Agustus 2026)
 
 Rencana & status: `sprint-plan.md` · catatan sesi: `logbook.md` (Sesi 1 Agustus 2026).
 
@@ -367,3 +371,4 @@ Rencana & status: `sprint-plan.md` · catatan sesi: `logbook.md` (Sesi 1 Agustus
 | S21 | `test(agent): inject deps into asisten/runs routes + SSE route tests (R1b)` | Tambah DI route agent + `handleAsistenChat`; 11 test SSE/rate-limit/agent-runs dengan fake pool/session; `agent/routes.js` 95,35% line / 91,67% funcs |
 | S22 | `style: apply prettier baseline` + `ci: add format check + coverage thresholds (R2)` + `fix(ci): stabilize coverage function threshold (S22)` | Prettier deterministik, `format:check`, coverage thresholds 41/57/68, dan CI menjadi 4 gate |
 | S23 | `refactor(telegram): split bot factory, commands, wizards, media, schedule, schema (R3)` | Bot tidak lagi self-executing; `bot.js` 201 baris, factory harness fake Telegraf, ekstraksi modul dan unit tests co-located |
+| S24 | `feat(db): versioned migrations, remove DDL from boot path (R4)` | Tambah `node-pg-migrate`, dua baseline migration, schema health guard, dan deploy runbook tanpa DDL runtime |

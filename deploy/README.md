@@ -9,6 +9,8 @@ Template unit systemd untuk web (`socai-node.service`) dan bot Telegram
 - Node.js `>=24` (disarankan via nvm — sesuaikan path di `ExecStart`).
 - PostgreSQL berjalan; kredensial di `.env` (jangan commit).
 - `NODE_ENV=production` + `SESSION_SECRET` + `APP_URL` wajib diisi di `.env`.
+- `node-pg-migrate` terpasang melalui `npm ci`; koneksi migration memakai `DB_HOST`,
+  `DB_NAME`, `DB_PORT`, `DB_USER`, dan `DB_PASSWORD` dari `.env`.
 
 ## Catatan Timezone (WIB)
 
@@ -31,6 +33,8 @@ sudo systemctl status socai-node socai-bot
 ```bash
 # Health web (DB ping)
 curl -s http://127.0.0.1:3010/health
+# Health harus menunjukkan checks.schema.status = "ok"
+curl -s http://127.0.0.1:3010/health | jq '.status, .checks.database, .checks.schema'
 
 # Smoke: login tanpa body tidak boleh 500
 curl -s -o /dev/null -w '%{http_code}\n' \
@@ -45,16 +49,22 @@ journalctl -u socai-bot -n 50 --no-pager
 ## Update / Restart
 
 ```bash
-cd /var/www/socai.my.id && git pull
+cd /var/www/socai.my.id
+git pull
+npm ci
+npm run migrate:up
 sudo systemctl restart socai-node socai-bot
 ```
 
-Restart aman: graceful shutdown (< 5 detik downtime), agent sessions web di-abort.
+Migration dijalankan manual/terpisah dari systemd agar DB user runtime tidak perlu
+hak DDL. Restart aman: graceful shutdown (< 5 detik downtime), agent sessions web
+di-abort. Jangan restart sebelum `npm run migrate:up` sukses.
 
 ## Rollback
 
 ```bash
 cd /var/www/socai.my.id && git checkout <commit-sebelumnya>
+npm run migrate:down  # hanya jika rollback schema memang diperlukan
 sudo systemctl restart socai-node socai-bot
 ```
 
