@@ -151,10 +151,10 @@ Dokumen ini adalah rencana kerja berbasis sprint untuk menindaklanjuti hasil aud
 **Tujuan**: origin check hanya dari sumber tepercaya; `trust proxy` dibatasi.
 
 **Tasks**
-- [ ] `lib/web/middleware/csrf.js` → allowed origins: `APP_URL` + localhost saja (hapus/limit `requestBaseUrl` & `forwardedBaseUrl`; atau hanya di non-produksi)
-- [ ] `lib/web/createApp.js` → `app.set('trust proxy', 'loopback')` (1 hop Apache); verifikasi `req.ip` & rate limit tetap benar
-- [ ] Docs ops: contoh vhost Apache di `deploy/` dengan `RequestHeader unset X-Forwarded-Host`
-- [ ] Test middleware CSRF: spoof `X-Forwarded-Host`/Host → 403; `APP_URL` asli → diteruskan
+- [x] `lib/web/middleware/csrf.js` → allowed origins: `APP_URL` + localhost saja (hapus `requestBaseUrl` dari Host header & `forwardedBaseUrl` dari X-Forwarded-Host/Proto yang bisa dispoof client)
+- [x] `lib/web/createApp.js` → `app.set('trust proxy', 'loopback')` (1 hop Apache; X-Forwarded-For/Proto dari luar tidak dipercaya)
+- [x] Docs ops: contoh vhost Apache di `deploy/` dengan `RequestHeader unset X-Forwarded-Host` (sudah dari Sprint 3)
+- [x] Test middleware CSRF: spoof `X-Forwarded-Host`/Host → 403; `APP_URL` asli → diteruskan → `test/csrfMiddleware.test.js` (8 test)
 
 **Docs**: `logbook.md`, `CODEBASE_WIKI.md`, `deploy/`
 

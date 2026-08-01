@@ -305,6 +305,36 @@ Pindahkan inline styles ke CSS classes agar `style-src` tidak perlu `'unsafe-inl
 | *(tbd)* | fix(web): escape dynamic error text in asisten/evaluasi/produk views |
 
 ---
-| P3 | Sprint 5: hardening CSRF & trust proxy (A6) |
+## Sprint 5 — Hardening CSRF & Trust Proxy (A6)
+
+### Temuan Audit
+- `createCsrfProtection` memasukkan `requestBaseUrl` (dari Host header) dan `forwardedBaseUrl` (dari `X-Forwarded-Host/Proto` yang dikirim client — Apache hanya `set X-Forwarded-Proto`, tidak menghapus header masuk) ke allowed origins → origin asing bisa lolos CSRF check.
+- `app.set('trust proxy', true)` mempercayai semua proxy (X-Forwarded-For/Proto dari luar).
+
+### Perbaikan
+- **`lib/web/middleware/csrf.js`** — allowed origins hanya `http://localhost:<port>`, `http://127.0.0.1:<port>`, dan `APP_URL`. Header `Host`/`X-Forwarded-*` tidak lagi dipercaya.
+- **`lib/web/createApp.js`** — `trust proxy: 'loopback'` (hanya percaya proxy di 127.0.0.1).
+- **`test/csrfMiddleware.test.js`** (baru, 8 test) — termasuk regresi: spoof `X-Forwarded-Host` & `Host` dengan Origin asing → 403; tanpa Origin → 403; `APP_URL`/localhost → diteruskan; GET → skip.
+- Contoh vhost Apache di `deploy/README.md` sudah memuat `RequestHeader unset X-Forwarded-Host` (Sprint 3).
+
+### Verifikasi
+- `node --test test/csrfMiddleware.test.js`: **8/8 pass**; `npm run test:ci`: **96/96 + QA PASSED**.
+- Live (server temp):
+  - Origin `https://evil.example` → **403**
+  - Origin evil + `X-Forwarded-Host: https://socai.my.id` → **403** (sebelum fix: CSRF lolos → 401)
+  - Origin `http://127.0.0.1:3111` → 401 (CSRF lolos, belum login — benar)
+  - Tanpa Origin → **403**
+
+### Commit
+| Commit | Pesan |
+|--------|-------|
+| *(tbd)* | fix(security): tighten CSRF origin check and trust proxy to loopback |
+
+---
+
+## Backlog / Lanjutan
+
+| Prioritas | Item |
+|-----------|------|
 | P3 | Sprint 6: perluas `test/routes.test.js` (health, auth guard, CSRF) (A7) |
 | Info | Sprint 7: konfirmasi token bot @DBSPresensiBot & rotasi DB password (A8) |

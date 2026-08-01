@@ -269,7 +269,7 @@ Command penting: `/status`, `/listproduk`, `/jadwalkonten`, `/statuskonten`, `/t
 
 ## 12. Security Checklist
 
-- CSRF pada mutasi `/api/*` dan `POST /logout`.
+- CSRF pada mutasi `/api/*` dan `POST /logout` — origin check hanya `APP_URL` + localhost (A6: tidak percaya `Host`/`X-Forwarded-*` dari client; `trust proxy: 'loopback'`).
 - CSP Helmet + nonce; jangan tambah `onclick`, `onchange`, inline style bebas, atau script tanpa nonce.
 - **Views (A5)**: data dinamis/error message tidak boleh masuk `innerHTML` — pakai `textContent` atau `esc()`; qa-smoke memvalidasi pola ini.
 - Upload: multer filter awal + `assertValidImageBuffer()` magic-byte.
