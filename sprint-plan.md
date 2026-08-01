@@ -222,6 +222,7 @@ Dokumen ini adalah rencana kerja berbasis sprint untuk menindaklanjuti hasil aud
 | S8 | 0.5 hari | Vertical slicing F0: `pool`/`aiReadPool` → `lib/shared/db.js` |
 | S9 | 0.5–1 hari | Vertical slicing F1: 7 modul shared → `lib/shared/` + co-located test |
 | S10 | 0.5 hari | Vertical slicing F2: fitur `channels` → `lib/features/channels/` + co-located test |
+| S11 | 0.5–1 hari | Vertical slicing F3: fitur `auth` + `dashboard` → `lib/features/`; `layout`/`pageInit` → `lib/shared/` |
 | **Total** | **±5–7 hari kerja** | |
 
 ---
@@ -304,5 +305,27 @@ Dokumen ini adalah rencana kerja berbasis sprint untuk menindaklanjuti hasil aud
 **DoD**: tidak ada import `lib/channels/` tersisa; test hijau; CI hijau.
 
 **Fase berikutnya (rencana F3)**: fitur `auth` + `dashboard` — `requireLogin`, `csrfToken`, `loginRateLimit`, routes login/logout, `loginPage` → `lib/features/auth/`; `dashboardPage` → `lib/features/dashboard/`; hapus `lib/web/routes/auth.js` & `lib/web/views/login.js` dari web shell (pakai shim re-export bila perlu).
+
+---
+
+## 18. Sprint 11 — Vertical Slicing F3: Fitur `auth` + `dashboard` (1 Agustus 2026)
+
+**Tujuan**: fondasi keamanan (login/logout/CSRF/rate limit) masuk pola fitur; dashboard ikut sekalian.
+
+**Tasks (kode)**
+- [x] `lib/features/auth/`: `requireLogin.js` (dari `lib/web/middleware/auth.js`), `csrfToken.js` (dari `lib/csrfToken.js`), `loginRateLimit.js`, `routes.js` (login/logout), `view.js` (`loginPage`) + `index.js` (public API) + `test/csrfToken.test.js`
+- [x] `lib/features/dashboard/`: `view.js` (`dashboardPage`) + `index.js`
+- [x] `layout.js` + `pageInit.js` → `lib/shared/` (UI infra lintas fitur — mencegah feature→web-shell import; penyimpangan dari rencana awal, dicatat di logbook)
+- [x] Update importer: `createApp.js` (3), `pages.js` (3), 7 route API (`requireLogin`), `qa-smoke.mjs` (import + VIEW_SOURCES), 4 views (layout/pageInit → shared)
+- [x] Co-located test: `test/csrfToken.test.js` → `lib/features/auth/test/`
+- [x] Verifikasi `npm run test:ci` → 103/103 + QA PASSED
+
+**Docs**: `AGENTS.md`, `README.md`, `CODEBASE_WIKI.md`, `logbook.md`
+
+**Commit**: `refactor(auth): move auth + dashboard features to lib/features/ (vertical slicing F3)`
+
+**DoD**: tidak ada import `middleware/auth.js`, `routes/auth.js`, `views/{login,dashboard,layout,pageInit}.js` tersisa; test hijau; CI hijau.
+
+**Fase berikutnya (rencana F4)**: fitur `produk` — `lib/web/routes/api/produk.js`, `lib/web/views/produk.js`, `lib/web/middleware/upload.js` → `lib/features/produk/`; `qa-smoke.mjs` VIEW_SOURCES diupdate; co-located test `test/produk` (jika ada).
 
 

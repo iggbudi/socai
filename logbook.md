@@ -481,3 +481,30 @@ Fitur pertama masuk pola `lib/features/` — membuktikan vertical slicing (domai
 |--------|-------|
 | `4c1b516` | `refactor(channels): move channels feature to lib/features/ (vertical slicing F2)` |
 
+---
+
+## Vertical Slicing — Fase 3: Fitur `auth` + `dashboard` (1 Agustus 2026, lanjutan)
+
+### Tujuan
+Fondasi keamanan (login/logout/CSRF/rate limit) masuk pola fitur; dashboard ikut sekalian.
+
+### Perubahan (kode)
+- **`lib/features/auth/`**: `requireLogin.js` (dari `lib/web/middleware/auth.js`), `csrfToken.js` (dari `lib/csrfToken.js`), `loginRateLimit.js`, `routes.js` (GET/POST `/login`, POST/GET `/logout`), `view.js` (`loginPage`), `index.js` (public API), `test/csrfToken.test.js` (co-located).
+- **`lib/features/dashboard/`**: `view.js` (`dashboardPage`) + `index.js`.
+- **`lib/shared/layout.js` + `lib/shared/pageInit.js`** — UI infra lintas fitur (sidebar + hamburger bind). **Penyimpangan dari rencana awal** (rencana: tetap di web shell): dashboard view butuh `sidebarHTML`/`HAMBURGER_BIND_JS`, dan aturan arah dependency melarang feature → web-shell — solusi: pindah ke `lib/shared/` (semua 4 view lain diupdate ke `'../../shared/{layout,pageInit}.js'`).
+- **Importer diupdate**: `createApp.js` (loginRateLimiter, registerAuthRoutes, loginPage), `pages.js` (csrfToken, requireLogin, dashboardPage), 7 route API (`requireLogin` → `'../../../features/auth/requireLogin.js'`), `qa-smoke.mjs` (import + VIEW_SOURCES paths), 4 views (`produk`, `pemasaran`, `asisten`, `evaluasi`).
+- Test count stabil: 103/103 (csrfToken.test pindah, glob features sudah mencakup).
+
+### Kendala & pelajaran
+- **Race condition paralel ke-3 kalinya** (git mv vs sed) — pola sama; dieksekusi ulang sekuensial. Sudah dicatat sebagai aturan main wajib.
+- **Edit docs keliru**: sekali edit menghapus baris `env.js` di tree CODEBASE_WIKI (harusnya hapus `csrfToken.js`) — terdeteksi lewat `sed -n` verifikasi, diperbaiki. Pelajaran: verifikasi hasil edit tree setelah batch.
+
+### Verifikasi
+- `npm run test:ci` → **103/103 + QA PASSED**.
+- `grep` final: tidak ada sisa import `middleware/auth.js`, `routes/auth.js`, `views/{login,dashboard,layout,pageInit}.js`.
+
+### Commit
+| Commit | Pesan |
+|--------|-------|
+| `(F3)` | `refactor(auth): move auth + dashboard features to lib/features/ (vertical slicing F3)` |
+

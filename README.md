@@ -59,7 +59,10 @@ socai/
 │   ├── agent.js            # AI agent, db_query, web_search, sessions
 │   ├── pemasaran.js       # Logik shared pemasaran & Repliz
 │   ├── telegramAccess.js  # Role-based ACL bot
-│   ├── csrfToken.js       # CSRF session token
+│   ├── features/           # Vertical slicing (F2/F3)
+│   │   ├── channels/       # Multi-channel adapter
+│   │   ├── auth/           # Login, logout, CSRF, rate limit
+│   │   └── dashboard/      # Dashboard page
 │   ├── health.js          # Health check
 │   └── web/               # Modul web (refactor Sprint 3)
 │       ├── createApp.js   # Factory Express

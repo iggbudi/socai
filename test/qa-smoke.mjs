@@ -11,8 +11,8 @@ import { getAutonomyConfig } from '../lib/actuator/policy.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const repoRoot = path.join(__dirname, '..');
-import { loginPage } from '../lib/web/views/login.js';
-import { dashboardPage } from '../lib/web/views/dashboard.js';
+import { loginPage } from '../lib/features/auth/view.js';
+import { dashboardPage } from '../lib/features/dashboard/view.js';
 import { produkPage } from '../lib/web/views/produk.js';
 import { pemasaranPage } from '../lib/web/views/pemasaran.js';
 import { asistenPage } from '../lib/web/views/asisten.js';
@@ -47,9 +47,9 @@ const VIEW_SOURCES = [
   'lib/web/views/produk.js',
   'lib/web/views/pemasaran.js',
   'lib/web/views/asisten.js',
-  'lib/web/views/dashboard.js',
+  'lib/features/dashboard/view.js',
   'lib/web/views/evaluasi.js',
-  'lib/web/views/login.js',
+  'lib/features/auth/view.js',
 ];
 
 for (const viewFile of VIEW_SOURCES) {

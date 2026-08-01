@@ -86,7 +86,7 @@ Copy `.env.example` → `.env` before running. Web validates env on startup via 
 | `lib/evaluationMetrics.js` | Metrik penelitian M1–M7: `getEvaluationMetrics()`, `resolveEvaluationPeriod()` |
 | `lib/actuator/` | Bounded autonomy layer: `resolveAutonomyMode`, policy checks, wrappers around `pemasaran.js` write paths |
 | `lib/features/channels/` | Multi-channel adapter: `registry.js`, `threads.js`, `instagram.js`, `getChannel()`, `listChannels()`, `buildChannelsPromptSection()` |
-| `lib/features/` | Vertical slicing: satu folder per fitur (F2 — `channels` pertama; F3+: auth, produk, pemasaran, agent, telegram) — domain/API/view/test co-located |
+| `lib/features/` | Vertical slicing: satu folder per fitur (F2: `channels`; F3: `auth` + `dashboard`; F4+: produk, pemasaran, agent, telegram) — domain/API/view/test co-located |
 | `lib/pemasaran.js` | Shared pemasaran/Repliz logic: `savePlansToDb`, `schedulePlanToChannel` (alias `schedulePlanToRepliz`), `syncPlanReplizStatus`, `parseMarketingSchedule` |
 | `lib/shared/mediaUrl.js` | `sanitizeImageUrl()` — HTTPS whitelist, blocks `javascript:`/`data:`/`http://`, allows `/uploads/...` |
 | `lib/shared/imageFile.js` | Magic-byte detection (`jpeg`/`png`/`gif`/`webp`), `assertValidImageBuffer()` |
@@ -94,7 +94,8 @@ Copy `.env.example` → `.env` before running. Web validates env on startup via 
 | `lib/aiLimits.js` | `normalizeAiMessage()`, `AiMessageError`, `AI_MESSAGE_MAX_LENGTH` |
 | `lib/env.js` | Startup validation for web/bot (DB, session, CSRF, models, Xiaomi keys) |
 | `lib/shared/repliz.js` | Repliz HTTP client, `createThreadsSchedule()`, `getReplizSchedule()`, `isReplizConfigured()` |
-| `lib/csrfToken.js` | `generateCsrfToken`, `ensureSessionCsrfToken`, `validateCsrfToken` — session CSRF for logout + page forms |
+| `lib/features/auth/` | Login/logout, session CSRF, login rate limit: `requireLogin`, `csrfToken` (`generateCsrfToken`, `ensureSessionCsrfToken`, `validateCsrfToken`), `loginRateLimit`, `routes` (login/logout), `view` (`loginPage`) + co-located test |
+| `lib/features/dashboard/` | Halaman dashboard (`dashboardPage`) |
 | `lib/telegramAccess.js` | `createTelegramAccess()` — role-based ACL (`super_admin` > `operator` > `viewer`), migrates legacy `allowed_user_ids[]` |
 | `lib/health.js` | `collectHealthStatus()` — DB ping + optional config flags (`?detail=1`) |
 | `lib/agentRuns.js` | `agent_runs` audit log: create/log/complete runs, metrics, purge |
@@ -116,7 +117,7 @@ Copy `.env.example` → `.env` before running. Web validates env on startup via 
 - **DB read-only pool** — AI `db_query` uses `aiReadPool` (`lib/shared/db.js`; dedicated `DB_AI_READ_*` creds recommended in production)
 - **AI `db_query` sandbox** — SELECT only, no multi-statement, keyword blocklist, single-table reads (`produk`/`pemasaran`), no JOIN, 1000-char & 50-row caps
 - **Graceful shutdown** — `server.js` handles `SIGINT`/`SIGTERM`: stops intervals, aborts web agent sessions, closes HTTP server, `closeAgentPools()`
-- **Helmet + CSP** — enabled with per-request nonce (`lib/web/middleware/csp.js`); inline `<script>`/`<style>` in views use `nonce` attribute; no `style-src 'unsafe-inline'` (styles via CSS classes); `script-src-attr 'none'` — views must use `addEventListener` in nonce scripts (shared `HAMBURGER_BIND_JS` in `lib/web/views/pageInit.js`), never HTML `onclick`/`onchange` attributes
+- **Helmet + CSP** — enabled with per-request nonce (`lib/web/middleware/csp.js`); inline `<script>`/`<style>` in views use `nonce` attribute; no `style-src 'unsafe-inline'` (styles via CSS classes); `script-src-attr 'none'` — views must use `addEventListener` in nonce scripts (shared `HAMBURGER_BIND_JS` in `lib/shared/pageInit.js`), never HTML `onclick`/`onchange` attributes
 - **Login rate limit** — 5 attempts / 15 min per IP
 - **Logout CSRF** — `POST /logout` with session `_csrf` token; `GET /logout` redirects to `/dashboard` (no session destroy)
 - **Telegram ACL** — roles via `lib/telegramAccess.js`: `super_admin` (full + user mgmt), `operator` (AI, wizards, Repliz), `viewer` (read-only commands); `/start`, `/help`, `/whoami` open to all

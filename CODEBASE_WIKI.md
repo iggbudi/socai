@@ -81,13 +81,14 @@ Catatan:
 │   ├── scheduleApproval.js           # Approval flow Telegram
 │   ├── publishFeedback.js            # Cache outcome publikasi untuk prompt
 │   ├── telegramAccess.js             # ACL role bot
-│   ├── csrfToken.js                  # Session CSRF token
 │   ├── aiLimits.js                   # Batas panjang pesan AI
 │   ├── env.js                        # Validasi env web/bot
 │   ├── health.js                     # Health status collector
 │   ├── actuator/                     # Bounded write tools + policy
 │   ├── features/
-│   │   └── channels/                   # Adapter channel social media (F2): registry, threads, instagram, prompt + test/
+│   │   ├── channels/                   # Adapter channel social media (F2): registry, threads, instagram, prompt + test/
+│   │   ├── auth/                       # Login/logout, session CSRF, rate limit (F3) + test/
+│   │   └── dashboard/                  # Dashboard page (F3)
 │   ├── web/                            # Express app modular
 ├── public/uploads/                   # Upload gambar lokal
 └── test/                             # node:test suites + qa-smoke.mjs
@@ -133,13 +134,13 @@ Prinsip desain:
 | Modul | Fungsi |
 |---|---|
 | `createApp.js` | Express factory; session PG store; Helmet/CSP; mount routes |
-| `middleware/auth.js` | Guard `requireLogin` |
+| `lib/features/auth/` | Login/logout + session CSRF (`requireLogin`, `csrfToken`, `loginRateLimit`) |
+| `lib/features/auth/routes.js` | Login/logout; `POST /logout` wajib `_csrf` |
 | `middleware/csrf.js` | CSRF Origin/Referer untuk mutasi `/api/*` |
 | `middleware/csp.js` | Nonce per request untuk inline script/style aman |
-| `middleware/loginRateLimit.js` | Login throttling 5/15 menit per IP |
+| `lib/features/auth/loginRateLimit.js` | Login throttling 5/15 menit per IP |
 | `middleware/upload.js` | Multer 5MB + filter MIME/ext |
 | `routes/pages.js` | Halaman `/dashboard`, `/produk`, `/pemasaran`, `/asisten`, `/evaluasi` |
-| `routes/auth.js` | Login/logout; `POST /logout` wajib `_csrf` |
 | `routes/health.js` | `/health`, optional `?detail=1` |
 | `routes/api/*` | CRUD produk, pemasaran, upload, Repliz, AI SSE, agent metrics |
 | `views/*.js` | Template HTML inline; event harus via `addEventListener` ber-nonce |
