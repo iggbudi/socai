@@ -372,8 +372,30 @@ Pindahkan inline styles ke CSS classes agar `style-src` tidak perlu `'unsafe-inl
 - **Kendala yang tercatat**: lockfile mirror Tencent (A9) & hidden lockfile npm (S2) — keduanya kini terdokumentasi untuk proyek lain; breaking change `pi-coding-agent` 0.83.0 ditangani via `ModelRuntime`.
 - **Backlog jangka panjang**: deploy produksi (restart systemd + verifikasi), A8 ops di atas, tag release berikutnya, evaluasi metrik penelitian M1–M7 setelah AI dipakai di prod.
 
-### Commit & Release
+
+---
+
+## Deploy Produksi & E2E Verification (lanjutan 1 Agustus 2026)
+
+### Deploy
+- Server produksi = `VM-13-18-ubuntu` (repo `/var/www/socai.my.id`, Apache reverse proxy → `127.0.0.1:3010`).
+- Kode di server: `e0bc5e3` (semua fix audit S1–S6 + docs). Unit systemd `/etc/systemd/system/socai-*.service` **identik** dengan template `deploy/`.
+- `socai-node` & `socai-bot` active; log bersih; bot @DBSPresensiBot terhubung (long polling), commands synced.
+- Restart `socai-node` (graceful, <5 dtk) dilakukan untuk memuat fix baru (lihat E2E di bawah).
+
+### E2E (user test sementara, dihapus otomatis setelah selesai)
+- Diuji via HTTPS publik `https://socai.my.id` (cookie session `Secure` di production — pengujian lewat `http://127.0.0.1` akan gagal 401; ini perilaku benar).
+- Hasil: **semua jalur hijau** — login 302, 5 halaman autentikasi 200 dengan 0 inline handler (CSP), produk CRUD (GET/POST 201/PUT/GET/DELETE), upload PNG magic-byte valid + file tersaji 200, pemasaran POST/DELETE, `/api/channels`, `/api/agent/runs`, `/api/agent/metrics`, SSE `/api/asisten` (agent init → `text_delta` → `done`), `agent_runs.status=completed`, logout + `_csrf` → 302.
+- Sisa data E2E = 0 (users/produk/pemasaran/agent_runs/file upload).
+
+### Temuan & Fix (E2E)
+- **Bug P3 (fixed)**: `POST /logout` dengan session tapi tanpa `Content-Type` form → `req.body` undefined → **HTTP 500** (pola sama dengan A1). Fix: guard `req.body?._csrf` di `lib/web/routes/auth.js:84` → kini 302 (tanpa destroy session). Catatan: `res.status(403).redirect()` menimpa status menjadi 302 — keamanan tetap terjaga (session tidak di-destroy); tidak ada test route untuk kasus ini karena harness `routes.test.js` tanpa DB/session.
+- Observasi: `GET /dashboard` setelah logout → 401 JSON untuk klien non-browser (`req.accepts('json')`); browser tetap dapat redirect `/login`.
+
+### Commit
 | Commit | Pesan |
 |--------|-------|
-| `67305d1` | docs: finalize sprint docs and release notes v1.1.0 |
-| `v1.1.0` | Tag release pertama pasca-remediasi |
+| `c7c27c2` | docs: record A8 decision (bot token intentional); update sprint checklists S0/S7 |
+| `e0bc5e3` | docs: record A8 decision - DB password rotation not needed (owner, 1 Aug 2026) |
+| (berikutnya) | fix(web): guard logout CSRF body (no 500); docs: deploy & E2E verification |
+
