@@ -197,7 +197,7 @@ Dokumen ini adalah rencana kerja berbasis sprint untuk menindaklanjuti hasil aud
 - [x] Update `AGENTS.md` (env, deploy, test), `README.md` (ops notes, TZ), `CODEBASE_WIKI.md` (changelog S1–S6)
 - [x] `logbook.md`: retrospective ringkas
 - [x] Konfirmasi A8 — token bot @DBSPresensiBot: **dikonfirmasi sengaja** oleh owner (1 Agustus 2026); tidak perlu diganti
-- [ ] Rotasi `DB_PASSWORD` (ops) — masih pending: rotasi ke random string + update `.env` + restart service + verifikasi user read-only `socai_ai_read`
+- [x] Rotasi `DB_PASSWORD` (ops) — **diputuskan tidak perlu** oleh owner (1 Agustus 2026); password dibiarkan
 - [x] Regression penuh: `npm run test:ci` + smoke curl (login, health, /produk, /pemasaran)
 - [x] Tag release (opsional, setelah persetujuan): `git tag v1.1.0 && git push --tags`
 

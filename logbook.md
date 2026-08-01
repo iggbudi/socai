@@ -365,7 +365,7 @@ Pindahkan inline styles ke CSS classes agar `style-src` tidak perlu `'unsafe-inl
 
 ### A8 — Ops (update 1 Agustus 2026)
 - **Token bot Telegram @DBSPresensiBot** — ✅ **dikonfirmasi sengaja** oleh owner (1 Agustus 2026); tidak perlu diganti (`.env` → `TELEGRAM_BOT_TOKEN` dibiarkan).
-- **Rotasi `DB_PASSWORD`** — ⏳ masih pending (ops, menunggu eksekusi owner): password berpola nama diri; rotasi ke random string + update `.env` + restart service + verifikasi user read-only `socai_ai_read`.
+- **Rotasi `DB_PASSWORD`** — ✅ **diputuskan tidak perlu** oleh owner (1 Agustus 2026); password dibiarkan apa adanya.
 
 ### Retrospective (S0–S7)
 - **Positif**: CI/CD sekarang benar-benar hijau & melindungi regresi (A1/A5/A6 punya test permanen); `npm audit` 0 vuln; jadwal WIB akurat di TZ server apa pun; docs (`sprint-plan.md`, `logbook.md`, `deploy/`) lengkap.
