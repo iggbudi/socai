@@ -245,7 +245,7 @@ Sejak S27, `commands.js` hanya wiring (100 baris); implementasi dikelompokkan ke
 `handlers/text.js`, `photo.js`, `errors.js`. `registerAndCapture()` di
 `test/helpers/telegramCtx.mjs` menangkap handler pada fake Telegraf sehingga test tidak
 meluncurkan polling. Exclusion coverage commands sudah dihapus; pengukuran no-exclude S27
-adalah **80,61% lines / 78,24% branches / 76,09% functions** dengan 204 test.
+adalah **80,61% lines / 78,24% branches / 76,09% functions** dengan 205 test.
 
 ### Konvensi test Telegram
 
@@ -401,5 +401,5 @@ Rencana & status: `sprint-plan.md` · catatan sesi: `logbook.md` (Sesi 1 Agustus
 | S25-B4 | `ef2aba0` | Memindahkan enam test Telegram ke `lib/features/telegram/test/` dan menetapkan konvensi co-location; suite tetap 145 test |
 | S25-B1 | `39a1e8f` | Menaikkan gate coverage native Node menjadi 53/73/78 setelah tiga pengukuran stabil; negative threshold check terbukti exit 1 |
 | S26-B3 | `95be736` | `LATEST_SCHEMA_MIGRATION` diturunkan otomatis dari migration terbaru; fallback unreadable menjadi `unknown` dan ditambah 7 test schema |
-| S27-B2 | `82af759` … `d28907c` | Memecah `commands.js` menjadi command/handler modules, menambah capture harness + test per modul, menutup reject callback error, dan mencabut exclusion coverage; no-exclude 80,61/78,24/76,09, commands.js 100 baris |
+| S27-B2 | `82af759` … `b1c7d21` | Memecah `commands.js` menjadi command/handler modules, menambah capture harness + test per modul, menutup reject callback error, dan mencabut exclusion coverage; no-exclude 80,61/78,24/76,09, commands.js 100 baris |
 | S28-B5 | `4ab6c5b` … `99296c7` | Structured pino JSON logging, redaction, `LOG_LEVEL`, request `X-Request-ID`, Telegram `updateId`/`userId` correlation, migrasi seluruh console non-test, dan no-console lint |

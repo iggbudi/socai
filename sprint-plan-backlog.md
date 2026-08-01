@@ -45,7 +45,7 @@ node --test --experimental-test-coverage \
 
 ### Status akhir setelah S27–S28
 
-Pengukuran full no-exclude terakhir: **208/208 test pass**, **80,84% lines /
+Pengukuran full no-exclude terakhir: **209/209 test pass**, **80,84% lines /
 78,58% branches / 76,52% functions**. `commands.js` berukuran 100 baris, exclusion coverage
 0, dan non-test `console.*` di `lib/` berjumlah 0.
 
@@ -266,7 +266,7 @@ kirim foto, `/jadwalkonten`, dan satu tombol inline approve/reject.
 **DoD**: `commands.js` <150 baris; `--test-coverage-exclude` hilang; agregat sesungguhnya ≥53/73;
 bot produksi terverifikasi manual; CI hijau.
 
-**Status S27**: ✅ selesai secara lokal dan production restart smoke; `commands.js` 100 baris,
+**Status S27**: ✅ selesai secara lokal dan production restart smoke; 205 test, `commands.js` 100 baris,
 exclusion 0, dan no-exclude mencapai 80,61/78,24/76,09.
 
 **Risiko**: **tertinggi di dokumen ini** — seluruh permukaan command bot produksi.
@@ -337,7 +337,7 @@ Uji korelasi: kirim satu request `/api/asisten`, pastikan seluruh baris log terk
 **DoD**: 0 `console.*` di `lib/` (di luar test); `no-console` aktif di ESLint; log produksi valid JSON;
 tidak ada rahasia bocor di journald; kedua service berjalan bersih.
 
-**Status S28**: ✅ selesai; 208 test lulus, coverage 80,84/78,58/76,52, kedua service active,
+**Status S28**: ✅ selesai; 209 test lulus, coverage 80,84/78,58/76,52, kedua service active,
 `/health` ok, dan startup logs pino tervalidasi JSON.
 
 **Risiko**: kehilangan visibilitas bila level salah setel, atau rahasia bocor ke log terstruktur.
@@ -371,7 +371,7 @@ regresi lolos CI, dan alarm skema palsu.
 | Selisih gate vs aktual | ~15pp | ~2pp | line/func >2pp; branch +0,58pp |
 | `--test-coverage-exclude` aktif | 1 | 1 | **0** |
 | `commands.js` LOC | 795 | 795 | **100** |
-| Jumlah test | 145 | ~152 | **208** |
+| Jumlah test | 145 | ~152 | **209** |
 | `console.*` di `lib/` | 66 | 66 | **0** |
 | Nama migrasi hardcoded | 1 | **0** | 0 |
 | Test di luar konvensi | 6 | **0** | 0 |

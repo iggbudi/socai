@@ -1021,12 +1021,12 @@ Commit dilakukan terpisah dari kenaikan gate coverage S25 setelah verifikasi cov
 
 ### Verifikasi
 
-- `npm test` → **204/204 pass** pada pengukuran no-exclude S27.
+- `npm test` → **205/205 pass** pada pengukuran no-exclude S27.
 - No-exclude coverage → **80,61% lines / 78,24% branches / 76,09% functions**; seluruh bar
   sprint (≥53% line / ≥73% functions, branch gate 78%) terpenuhi.
 - `wc -l lib/features/telegram/commands.js` → **100**; package tidak lagi memiliki exclusion.
 - Commit scoped S27: `82af759`, `ea67ae7`, `5580766`, `53f741a`, `3cee137`, `63701a1`,
-  `688f509`, `f013be8`, `3094f8e`, `6ce2a41`, `d28907c`.
+  `688f509`, `f013be8`, `3094f8e`, `6ce2a41`, `d28907c`, `b1c7d21`.
 
 ## Sprint 28 — Structured Logging (B5) (2 Agustus 2026)
 
@@ -1044,7 +1044,7 @@ Commit dilakukan terpisah dari kenaikan gate coverage S25 setelah verifikasi cov
 
 ### Verifikasi
 
-- `npm test` → **208/208 pass**.
+- `npm test` → **209/209 pass**.
 - `npm run test:coverage` → lulus gate **53/73/78**; tiga eksekusi berturut-turut identik:
   **80,84% lines / 78,58% branches / 76,52% functions**.
 - `npm run lint` → exit 0; `grep` non-test `console.*` di `lib/` → **0**.
