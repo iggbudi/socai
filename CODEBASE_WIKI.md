@@ -361,3 +361,4 @@ Rencana & status: `sprint-plan.md` · catatan sesi: `logbook.md` (Sesi 1 Agustus
 | S10 | `4c1b516` | Vertical slicing F2: fitur `channels` (5 file) → `lib/features/channels/`; 11 importer diupdate; `env.js` pengecualian terdokumentasi (CHANNEL_IDS); co-located test + glob `npm test` + qa-smoke diupdate |
 | S11 | `318a3be` | Vertical slicing F3: fitur `auth` (requireLogin, csrfToken, loginRateLimit, routes, view, test) + `dashboard` → `lib/features/`; `layout`/`pageInit` → `lib/shared/`; 7 route API + createApp + pages + qa-smoke diupdate |
 | S12 | `6b803f6` | Vertical slicing F4: fitur `produk` (CRUD + upload, 2 route digabung) → `lib/features/produk/`; createApp/pages/qa-smoke diupdate |
+| S13 | `5c2e04f` | Vertical slicing F5: fitur `pemasaran` (domain 297 baris + routes + jobs + view + test) → `lib/features/pemasaran/`; 10 importer diupdate; `lib/web/replizJobs.js` dihapus |

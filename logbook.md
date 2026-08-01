@@ -553,5 +553,5 @@ Domain inti bisnis (Repliz scheduling) + background jobs keluar dari web shell &
 ### Commit
 | Commit | Pesan |
 |--------|-------|
-| `(F5)` | `refactor(pemasaran): move pemasaran feature to lib/features/ (vertical slicing F5)` |
+| `5c2e04f` | `refactor(pemasaran): move pemasaran feature to lib/features/ (vertical slicing F5)` |
 
