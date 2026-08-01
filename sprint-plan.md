@@ -220,6 +220,7 @@ Dokumen ini adalah rencana kerja berbasis sprint untuk menindaklanjuti hasil aud
 | S6 | 1 hari | Test route level |
 | S7 | 0.5 hari | Docs final + release |
 | S8 | 0.5 hari | Vertical slicing F0: `pool`/`aiReadPool` → `lib/shared/db.js` |
+| S9 | 0.5–1 hari | Vertical slicing F1: 7 modul shared → `lib/shared/` + co-located test |
 | **Total** | **±5–7 hari kerja** | |
 
 ---
@@ -258,5 +259,27 @@ Dokumen ini adalah rencana kerja berbasis sprint untuk menindaklanjuti hasil aud
 **DoD**: semua importer pool mengarah ke `lib/shared/db.js`; test hijau; CI hijau.
 
 **Fase berikutnya (rencana F1)**: pindahkan shared murni (`wibTime`, `rateLimit`, `mediaUrl`, `imageFile`, `html`, `repliz`, `telegramNotify`) ke `lib/shared/`; mulai co-located test.
+
+---
+
+## 16. Sprint 9 — Vertical Slicing F1: Shared Infra Murni (1 Agustus 2026)
+
+**Tujuan**: pindahkan modul shared murni (tanpa ketergantungan fitur) ke `lib/shared/`; mulai co-located test.
+
+**Tasks (kode)**
+- [x] Pindah 7 modul → `lib/shared/`: `wibTime`, `rateLimit`, `mediaUrl`, `imageFile`, `html` (dari `lib/web/`), `repliz`, `telegramNotify`
+- [x] Update ±20 importer (views → `../../shared/html.js`; routes API → `../../../shared/*.js`; `telegram-bot.js` → `./lib/shared/*.js`; `lib/` root → `./shared/*.js`; test tersisa → `../lib/shared/*.js`)
+- [x] `lib/shared/telegramNotify.js` → import `'../telegramAccess.js'` (ACL pindah di F8)
+- [x] Co-located test: `test/wibTime.test.js` & `test/mediaUrl.test.js` → `lib/shared/test/`; glob `npm test` diupdate (`node --test "test/**/*.test.js" "lib/shared/**/*.test.js"`)
+- [x] `test/qa-smoke.mjs` path check `lib/telegramNotify.js` → `lib/shared/telegramNotify.js`
+- [x] Verifikasi `npm run test:ci` → 103/103 + QA PASSED
+
+**Docs**: `AGENTS.md`, `README.md`, `CODEBASE_WIKI.md`, `logbook.md`
+
+**Commit**: `refactor(shared): move pure shared modules to lib/shared/ (vertical slicing F1)`
+
+**DoD**: tidak ada import path lama tersisa; test hijau; CI hijau.
+
+**Fase berikutnya (rencana F2)**: pindahkan fitur `channels` (5 file, self-contained) ke `lib/features/channels/`; `env.js` (import `CHANNEL_IDS`) jadi pengecualian terdokumentasi atau pindahkan `CHANNEL_IDS` ke fitur.
 
 

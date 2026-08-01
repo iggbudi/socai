@@ -13,7 +13,7 @@ Template unit systemd untuk web (`socai-node.service`) dan bot Telegram
 ## Catatan Timezone (WIB)
 
 Sejak Sprint 3 (temuan audit A4), parsing teks jadwal Indonesia dan generasi
-slot kalender memakai zona **WIB (+07:00) eksplisit** (`lib/wibTime.js`) — tidak
+slot kalender memakai zona **WIB (+07:00) eksplisit** (`lib/shared/wibTime.js`) — tidak
 bergantung timezone server. Meski demikian, template unit tetap menyetel
 `TZ=Asia/Jakarta` agar tooling lain (log, `new Date()` lain) konsisten WIB.
 

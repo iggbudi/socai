@@ -1,6 +1,6 @@
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
-import { detectImageType, assertValidImageBuffer } from '../lib/imageFile.js';
+import { detectImageType, assertValidImageBuffer } from '../lib/shared/imageFile.js';
 
 const PNG_SIGNATURE = Buffer.from([0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A]);
 const JPEG_SIGNATURE = Buffer.from([0xFF, 0xD8, 0xFF, 0xE0, 0x00, 0x10]);

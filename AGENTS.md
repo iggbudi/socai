@@ -12,7 +12,7 @@ Node.js ESM app for **Batik Bakaran** product & marketing management:
 - **Cloudinary** — optional image upload from Telegram marketing wizard
 
 > Audit & rencana remediasi sprint: `sprint-plan.md` · catatan sesi: `logbook.md` ·
-> template deploy: `deploy/` · pengaturan WIB: `lib/wibTime.js` (jadwal selalu +07:00 eksplisit).
+> template deploy: `deploy/` · pengaturan WIB: `lib/shared/wibTime.js` (jadwal selalu +07:00 eksplisit).
 
 No build step, no TypeScript. Node **>=24**. Tests: `npm test` (Node built-in `node:test`)
 — termasuk unit tests per modul (`test/*.test.js`) dan route-level tests (`test/routes.test.js`:
@@ -32,7 +32,7 @@ npm run eval:export  # export metrik penelitian M1–M7 (JSON)
 **systemd** (production): `socai-node.service` (web), `socai-bot.service` (bot)
 
 > Template unit systemd + runbook ada di `deploy/`. Wajib set `TZ=Asia/Jakarta` di unit
-> (logika jadwal WIB sudah eksplisit via `lib/wibTime.js` — lihat Sprint 3/A4 di `logbook.md`).
+> (logika jadwal WIB sudah eksplisit via `lib/shared/wibTime.js` — lihat Sprint 3/A4 di `logbook.md`).
 
 Copy `.env.example` → `.env` before running. Web validates env on startup via `validateWebEnvironment()`; bot via `validateBotEnvironment()`.
 
@@ -80,18 +80,19 @@ Copy `.env.example` → `.env` before running. Web validates env on startup via 
 | Module | Role |
 |--------|------|
 | `lib/shared/db.js` | PostgreSQL pools (shared infra): `pool` (write), `aiReadPool` (read-only untuk AI `db_query`), `closeAgentPools()` — tanpa import dari `lib/features/` |
+| `lib/shared/` | Shared infra per fitur (F0/F1): `db.js`, `wibTime.js`, `rateLimit.js`, `mediaUrl.js`, `imageFile.js`, `html.js`, `repliz.js`, `telegramNotify.js` + co-located test di `lib/shared/test/` |
 | `lib/agent.js` | AI agent (`@earendil-works/pi-coding-agent`), session map, `initAgent()`, tools `db_query` (SELECT-only), `web_search`, actuator tools (`get_calendar_gaps`, `save_content_plan`, `schedule_content`, `sync_content_status`), active run context exports |
 | `lib/agentRuns.js` | Research audit log: `initAgentRunsSchema`, `createAgentRun`, `logToolCall`, `completeAgentRun`, `getAgentRunMetrics`, `listAgentRuns` |
 | `lib/evaluationMetrics.js` | Metrik penelitian M1–M7: `getEvaluationMetrics()`, `resolveEvaluationPeriod()` |
 | `lib/actuator/` | Bounded autonomy layer: `resolveAutonomyMode`, policy checks, wrappers around `pemasaran.js` write paths |
 | `lib/channels/` | Multi-channel adapter: `registry.js`, `threads.js`, `instagram.js`, `getChannel()`, `listChannels()`, `buildChannelsPromptSection()` |
 | `lib/pemasaran.js` | Shared pemasaran/Repliz logic: `savePlansToDb`, `schedulePlanToChannel` (alias `schedulePlanToRepliz`), `syncPlanReplizStatus`, `parseMarketingSchedule` |
-| `lib/mediaUrl.js` | `sanitizeImageUrl()` — HTTPS whitelist, blocks `javascript:`/`data:`/`http://`, allows `/uploads/...` |
-| `lib/imageFile.js` | Magic-byte detection (`jpeg`/`png`/`gif`/`webp`), `assertValidImageBuffer()` |
-| `lib/rateLimit.js` | `createRateLimiter()` — Express middleware + standalone check/consume |
+| `lib/shared/mediaUrl.js` | `sanitizeImageUrl()` — HTTPS whitelist, blocks `javascript:`/`data:`/`http://`, allows `/uploads/...` |
+| `lib/shared/imageFile.js` | Magic-byte detection (`jpeg`/`png`/`gif`/`webp`), `assertValidImageBuffer()` |
+| `lib/shared/rateLimit.js` | `createRateLimiter()` — Express middleware + standalone check/consume |
 | `lib/aiLimits.js` | `normalizeAiMessage()`, `AiMessageError`, `AI_MESSAGE_MAX_LENGTH` |
 | `lib/env.js` | Startup validation for web/bot (DB, session, CSRF, models, Xiaomi keys) |
-| `lib/repliz.js` | Repliz HTTP client, `createThreadsSchedule()`, `getReplizSchedule()`, `isReplizConfigured()` |
+| `lib/shared/repliz.js` | Repliz HTTP client, `createThreadsSchedule()`, `getReplizSchedule()`, `isReplizConfigured()` |
 | `lib/csrfToken.js` | `generateCsrfToken`, `ensureSessionCsrfToken`, `validateCsrfToken` — session CSRF for logout + page forms |
 | `lib/telegramAccess.js` | `createTelegramAccess()` — role-based ACL (`super_admin` > `operator` > `viewer`), migrates legacy `allowed_user_ids[]` |
 | `lib/health.js` | `collectHealthStatus()` — DB ping + optional config flags (`?detail=1`) |

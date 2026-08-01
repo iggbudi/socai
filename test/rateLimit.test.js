@@ -1,6 +1,6 @@
 import { describe, it, after } from 'node:test';
 import assert from 'node:assert/strict';
-import { createRateLimiter } from '../lib/rateLimit.js';
+import { createRateLimiter } from '../lib/shared/rateLimit.js';
 
 describe('createRateLimiter', () => {
   it('check and consume allow requests under the limit', () => {

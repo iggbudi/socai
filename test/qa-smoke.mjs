@@ -77,7 +77,7 @@ const actuatorFiles = [
   'lib/autonomousJobs.js',
   'lib/scheduleApproval.js',
   'lib/publishFeedback.js',
-  'lib/telegramNotify.js',
+  'lib/shared/telegramNotify.js',
   'lib/channels/index.js',
   'lib/channels/registry.js',
   'lib/channels/threads.js',

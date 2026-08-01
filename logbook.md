@@ -428,3 +428,29 @@ Mulai restrukturisasi per fitur (vertical slicing): potong coupling terbesar —
 - F1: pindahkan shared murni ke `lib/shared/` (`wibTime`, `rateLimit`, `mediaUrl`, `imageFile`, `html`, `repliz`, `telegramNotify`) + co-located test.
 - `telegramNotify.js` wajib ke `shared/` (dipakai agent + telegram — mencegah cycle di fase telegram).
 
+---
+
+## Vertical Slicing — Fase 1: Shared Infra Murni (1 Agustus 2026, lanjutan)
+
+### Tujuan
+Pindahkan modul shared murni (tanpa ketergantungan fitur) ke `lib/shared/`; mulai co-located test.
+
+### Perubahan (kode)
+- **7 modul pindah ke `lib/shared/`**: `wibTime.js`, `rateLimit.js`, `mediaUrl.js`, `imageFile.js`, `html.js` (dari `lib/web/`), `repliz.js`, `telegramNotify.js`.
+- **±20 importer diupdate** (views → `../../shared/html.js`; routes API → `../../../shared/*.js`; `telegram-bot.js` → `./lib/shared/*.js`; `lib/` root → `./shared/*.js`; test tersisa → `../lib/shared/*.js`).
+- `lib/shared/telegramNotify.js` kini import `'../telegramAccess.js'` (ACL tetap di `lib/` sampai F8).
+- **Co-located test**: `lib/shared/test/wibTime.test.js` (import `../wibTime.js`, `../../pemasaran.js`, `../../actuator/calendar.js`) & `lib/shared/test/mediaUrl.test.js` (import `../mediaUrl.js`); `package.json` test glob → `node --test "test/**/*.test.js" "lib/shared/**/*.test.js"`.
+- `test/qa-smoke.mjs` path check `lib/telegramNotify.js` → `lib/shared/telegramNotify.js`.
+
+### Kendala & pelajaran
+- **`html.js` bukan di `lib/` tapi `lib/web/`** — import view harus `../../shared/html.js` (bukan `../shared/html.js`); dikoreksi setelah grep verifikasi.
+- **Race condition antar-perintah paralel**: `git mv` + `sed` + `grep` di batch yang sama saling menimpa (sed/grep jalan sebelum move selesai; `lib/shared/test/` belum dibuat → rantai `git mv` gagal). Pelajaran: operasi file berurutan (mv → sed → verifikasi) wajib satu command chain.
+
+### Verifikasi
+- `npm run test:ci` → **103/103 + QA PASSED** (satu kali gagal: qa-smoke path `lib/telegramNotify.js` → diperbaiki).
+
+### Commit
+| Commit | Pesan |
+|--------|-------|
+| `(F1)` | `refactor(shared): move pure shared modules to lib/shared/ (vertical slicing F1)` |
+

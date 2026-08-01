@@ -61,8 +61,16 @@ Catatan:
 ├── CODEBASE_WIKI.md                  # Dokumen ini
 ├── scripts/                          # Export metrics + SQL helper
 ├── lib/
-│   ├── shared/
-│   │   └── db.js                      # pool + aiReadPool + closeAgentPools (F0)
+│   ├── shared/                        # Shared infra (F0/F1)
+│   │   ├── db.js                      # pool + aiReadPool + closeAgentPools
+│   │   ├── repliz.js                  # Repliz HTTP client
+│   │   ├── wibTime.js                 # WIB eksplisit (+07:00)
+│   │   ├── rateLimit.js               # Shared rate limiter
+│   │   ├── mediaUrl.js                # Sanitasi URL gambar
+│   │   ├── imageFile.js               # Magic-byte image validation
+│   │   ├── html.js                    # escapeHtml
+│   │   ├── telegramNotify.js          # Notifikasi Telegram
+│   │   └── test/                      # Co-located tests (wibTime, mediaUrl)
 │   ├── agent.js                       # AI agent, tools, sessions
 │   ├── agentRunner.js                # Programmatic agent task runner
 │   ├── agentRuns.js                  # Audit log agent_runs
@@ -70,15 +78,10 @@ Catatan:
 │   ├── autonomousJobs.js             # Weekly plan cron, feedback, purge
 │   ├── evaluationMetrics.js          # Metrik M1–M7
 │   ├── pemasaran.js                  # Shared marketing/Repliz business logic
-│   ├── repliz.js                     # Repliz HTTP client
 │   ├── scheduleApproval.js           # Approval flow Telegram
 │   ├── publishFeedback.js            # Cache outcome publikasi untuk prompt
 │   ├── telegramAccess.js             # ACL role bot
-│   ├── telegramNotify.js             # Notifikasi Telegram
 │   ├── csrfToken.js                  # Session CSRF token
-│   ├── mediaUrl.js                   # Sanitasi URL gambar
-│   ├── imageFile.js                  # Magic-byte image validation
-│   ├── rateLimit.js                  # Shared rate limiter
 │   ├── aiLimits.js                   # Batas panjang pesan AI
 │   ├── env.js                        # Validasi env web/bot
 │   ├── health.js                     # Health status collector
@@ -213,7 +216,7 @@ Audit: `lib/agentRuns.js` mencatat run/tool/plans/error/durasi; `lib/evaluationM
 | `lib/channels/threads.js` | Adapter Threads via Repliz account utama |
 | `lib/channels/instagram.js` | Adapter Instagram via `REPLIZ_INSTAGRAM_ACCOUNT_ID` |
 | `lib/channels/prompt.js` | Prompt section channel untuk AI |
-| `lib/repliz.js` | HTTP client Repliz |
+| `lib/shared/repliz.js` | HTTP client Repliz |
 | `lib/web/replizJobs.js` | Background sync dan auto-schedule |
 
 Repliz menggunakan `REPLIZ_API_KEY`, `REPLIZ_SECRET`, `REPLIZ_ACCOUNT_ID`, `REPLIZ_BASE_URL`; Instagram butuh `ENABLED_CHANNELS=instagram` dan `REPLIZ_INSTAGRAM_ACCOUNT_ID`. Unique index `repliz_schedule_id` mencegah double schedule.

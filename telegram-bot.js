@@ -9,7 +9,7 @@ import { pool } from './lib/shared/db.js';
 import { agentSessions, agentSessionLastUsed, agentSessionPromises, touchAgentSession, initAgent } from './lib/agent.js';
 import { createAgentRun, completeAgentRun } from './lib/agentRuns.js';
 import { resolveAutonomyMode } from './lib/actuator/index.js';
-import { isReplizConfigured } from './lib/repliz.js';
+import { isReplizConfigured } from './lib/shared/repliz.js';
 import {
   savePlansToDb,
   schedulePlanToRepliz,
@@ -17,8 +17,8 @@ import {
   syncPlanReplizStatus,
 } from './lib/pemasaran.js';
 import { normalizeAiMessage, AiMessageError } from './lib/aiLimits.js';
-import { createRateLimiter } from './lib/rateLimit.js';
-import { assertValidImageBuffer, detectImageType, extForImageType } from './lib/imageFile.js';
+import { createRateLimiter } from './lib/shared/rateLimit.js';
+import { assertValidImageBuffer, detectImageType, extForImageType } from './lib/shared/imageFile.js';
 import { createTelegramAccess } from './lib/telegramAccess.js';
 import { approvePlanSchedule, rejectPlanSchedule } from './lib/scheduleApproval.js';
 

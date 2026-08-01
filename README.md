@@ -46,11 +46,18 @@ socai/
 ├── server.js              # Bootstrap web + Repliz background jobs
 ├── telegram-bot.js        # Entry point bot Telegram
 ├── lib/
-│   ├── shared/
-│   │   └── db.js           # pool + aiReadPool (shared infra, F0)
+│   ├── shared/             # Shared infra (F0/F1)
+│   │   ├── db.js           # pool + aiReadPool
+│   │   ├── repliz.js       # HTTP client Repliz
+│   │   ├── wibTime.js      # Jadwal WIB eksplisit (+07:00)
+│   │   ├── rateLimit.js    # Shared rate limiter
+│   │   ├── mediaUrl.js     # Sanitasi URL gambar
+│   │   ├── imageFile.js    # Magic-byte image validation
+│   │   ├── html.js         # escapeHtml
+│   │   ├── telegramNotify.js  # Notifikasi Telegram
+│   │   └── test/           # Co-located tests (F1)
 │   ├── agent.js            # AI agent, db_query, web_search, sessions
 │   ├── pemasaran.js       # Logik shared pemasaran & Repliz
-│   ├── repliz.js          # HTTP client Repliz
 │   ├── telegramAccess.js  # Role-based ACL bot
 │   ├── csrfToken.js       # CSRF session token
 │   ├── health.js          # Health check
@@ -302,7 +309,7 @@ sequenceDiagram
     participant UI as Web / Bot
     participant API as pemasaran routes
     participant PEM as lib/pemasaran.js
-    participant REP as lib/repliz.js
+    participant REP as lib/shared/repliz.js
     participant DB as PostgreSQL
     participant Threads as Threads via Repliz
 
@@ -403,7 +410,7 @@ flowchart TB
     subgraph SharedLib["lib/ shared"]
         AGT[agent.js]
         PEM[pemasaran.js]
-        REP[repliz.js]
+        REP[shared/repliz.js]
         TAC[telegramAccess.js]
         ENV[env.js]
         HL[health.js]
@@ -636,7 +643,7 @@ sudo systemctl status socai-node socai-bot
 Web bind `127.0.0.1` — wajib reverse proxy (Nginx) + `APP_URL=https://socai.my.id`.
 
 > **Timezone**: parsing jadwal Indonesia & slot kalender memakai WIB (+07:00) eksplisit
-> (`lib/wibTime.js`, Sprint 3). Set `TZ=Asia/Jakarta` di unit systemd agar tooling lain
+> (`lib/shared/wibTime.js`, Sprint 3). Set `TZ=Asia/Jakarta` di unit systemd agar tooling lain
 > konsisten; verifikasi deploy via `curl -s http://127.0.0.1:3010/health`.
 
 ---
