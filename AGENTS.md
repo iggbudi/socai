@@ -103,7 +103,7 @@ Copy `.env.example` → `.env` before running. Web validates env on startup via 
 | `lib/features/dashboard/` | Halaman dashboard (`dashboardPage`) |
 | `lib/features/produk/` | CRUD produk + upload gambar: `routes.js` (`registerProdukRoutes` + `registerUploadRoutes`), `upload.js` (multer 5MB + magic-byte), `view.js` (`produkPage`) |
 | `lib/features/telegram/access.js` | `createTelegramAccess()` — role-based ACL (`super_admin` > `operator` > `viewer`), migrates legacy `allowed_user_ids[]` |
-| `lib/features/telegram/` | Fitur bot (F8): `bot.js` (self-executing — Telegraf, wizards, Repliz commands, startBot), `helpers.js` (`safeReply`, `replyLong`, `markdownToTelegramHtml`), `access.js`, `test/` |
+| `lib/features/telegram/` | Fitur bot (F8/S23): `bot.js` (`createBot`, `startBot` tanpa auto-launch), `commands.js` (wiring Telegraf), `helpers/format.js`, `media/cloudinary.js`, `wizards/`, `schedule.js`, `schema.js`, `helpers.js`, `access.js`, `test/` |
 | `lib/web/health.js` | `collectHealthStatus()` — DB ping + optional config flags (`?detail=1`) |
 | `lib/features/agent/runs.js` | `agent_runs` audit log: create/log/complete runs, metrics, purge |
 | `lib/features/agent/actuator/` | Bounded actuator tools + `AUTONOMY_MODE` policy |
@@ -113,11 +113,13 @@ Copy `.env.example` → `.env` before running. Web validates env on startup via 
 | `lib/features/agent/publishFeedback.js` | Publish outcome cache injected into agent system prompt |
 | `lib/web/` | Web app shell murni: `createApp.js` (Express factory), `middleware/` (CSRF, CSP nonce), `routes/` (pages, health), `health.js` |
 
-**Entry points:** `server.js` (thin bootstrap: env validation, schema init, `createWebApp()`, listen, shutdown), `telegram-bot.js` (thin entry → `lib/features/telegram/bot.js`: access control via `access.js` + `telegram-users.json`, wizards, Repliz commands).
+**Entry points:** `server.js` (thin bootstrap: env validation, schema init, `createWebApp()`, listen, shutdown), `telegram-bot.js` (thin entry → `startBot()`; importing `lib/features/telegram/bot.js` alone tidak meluncurkan polling). Factory `createBot()` menyediakan dependency seams untuk test fake Telegraf/DB/AI.
 
 **Route testability convention (S21):** feature route registration yang memakai global pool/agent dependency wajib menyediakan optional `deps` dengan default production yang identik; handler SSE/API yang beralur kompleks diekspor sebagai fungsi bernama agar dapat diuji memakai fake pool/session tanpa database, model, atau jaringan.
 
 **Coverage gate convention (S22):** setelah gate ditetapkan, ambang coverage di `package.json` hanya boleh dinaikkan. Penurunan ambang wajib memiliki alasan tertulis di `logbook.md`; gate saat ini adalah **41% lines / 57% functions / 68% branches**. S22 mencatat pengecualian satu kali dari 58% ke 57% functions karena clean GitHub Actions runner mengukur 57,55% sementara local runner mengukur 57,91–58,27%.
+
+**Telegram testability convention (S23):** `bot.js` hanya factory/startup (201 baris); command wiring ada di `commands.js`, sedangkan logika format/media/wizard/schedule/schema berada di modul terpisah dan menerima dependency yang diperlukan. `botFactory.test.js` memakai fake Telegraf tanpa `launch()`; wiring `commands.js` dikecualikan dari agregat coverage native Node melalui `--test-coverage-exclude`, tetapi daftar command/event/action tetap diverifikasi oleh test.
 
 ## Security (P0+P1 summary)
 

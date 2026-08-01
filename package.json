@@ -11,7 +11,7 @@
     "dev": "node server.js & node telegram-bot.js",
     "test": "node --test \"test/**/*.test.js\" \"lib/shared/**/*.test.js\" \"lib/features/**/*.test.js\"",
     "test:ci": "npm test && QA_SKIP_HTTP=1 node test/qa-smoke.mjs",
-    "test:coverage": "node --test --experimental-test-coverage --test-coverage-lines=41 --test-coverage-functions=57 --test-coverage-branches=68 \"test/**/*.test.js\" \"lib/shared/**/*.test.js\" \"lib/features/**/*.test.js\"",
+    "test:coverage": "node --test --experimental-test-coverage --test-coverage-lines=41 --test-coverage-functions=57 --test-coverage-branches=68 --test-coverage-exclude=\"lib/features/telegram/commands.js\" \"test/**/*.test.js\" \"lib/shared/**/*.test.js\" \"lib/features/**/*.test.js\"",
     "lint": "eslint .",
     "format": "prettier --write .",
     "format:check": "prettier --check .",

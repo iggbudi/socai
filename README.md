@@ -44,7 +44,7 @@ Aplikasi menggabungkan **web dashboard**, **bot Telegram**, **AI agent berbasis 
 ```text
 socai/
 ├── server.js              # Bootstrap web + Repliz background jobs
-├── telegram-bot.js        # Entry tipis → lib/features/telegram/bot.js
+├── telegram-bot.js        # Entry tipis → startBot() (tanpa auto-launch saat import)
 ├── lib/
 │   ├── shared/             # Shared infra (F0/F1)
 │   │   ├── db.js           # pool + aiReadPool
@@ -65,7 +65,7 @@ socai/
 │   │   ├── pemasaran/      # Domain, routes (+ Repliz accounts), jobs, view
 │   │   ├── agent/          # AI agent core, tools, actuator
 │   │   ├── evaluasi/       # Metrik riset M1–M7
-│   │   └── telegram/       # Bot: bot.js, helpers, access, test
+│   │   └── telegram/       # Bot factory/commands, wizards, media, schedule, schema, tests (S23)
 │   ├── env.js             # Validasi env web/bot
 │   ├── health.js          # Health check
 │   └── web/               # Modul web (refactor Sprint 3)

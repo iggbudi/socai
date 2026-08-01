@@ -862,3 +862,35 @@ Threshold line rencana awal 45% disesuaikan menjadi 41% karena hasil baseline se
 | `e944b51` | `style: apply prettier baseline` |
 | `e409a84` | `ci: add format check + coverage thresholds (R2)` |
 | `(this commit)` | `fix(ci): stabilize coverage function threshold (S22)` |
+
+---
+
+## Sprint 23 — Pecah Telegram Bot (R3) (2 Agustus 2026, lanjutan)
+
+### Tujuan
+
+Membuat bot Telegram dapat diuji tanpa long polling, lalu memecah logika monolit ke modul vertical slicing tanpa mengubah alur produksi.
+
+### Perubahan
+
+- **Factory/startup**: `lib/features/telegram/bot.js` tidak lagi self-executing; sekarang mengekspor `createBot()` dan `startBot()`. Root `telegram-bot.js` menjadi pemanggil eksplisit `startBot()`.
+- **Harness**: `botFactory.test.js` memakai fake Telegraf dan token dummy untuk memverifikasi middleware, command, event, dan callback registration tanpa `bot.launch()`; fake context tersedia di `test/helpers/telegramCtx.mjs`.
+- **Ekstraksi murni**: format (`helpers/format.js`), Cloudinary/media (`media/cloudinary.js`), wizard produk/konten (`wizards/`), Repliz scheduling (`schedule.js`), dan schema/command sync (`schema.js`). Wiring handler dipusatkan di `commands.js`.
+- **Test unit**: tambah test untuk normalizer wizard, pilihan produk, prompt konten, escape Markdown, intent produk, media config, schedule guard, schema sync, dan factory.
+- **Coverage**: `commands.js` adalah adapter wiring dan dikecualikan dari agregat melalui native Node `--test-coverage-exclude`; registration tetap diuji oleh factory test.
+- **Dokumentasi**: `AGENTS.md`, `README.md`, `CODEBASE_WIKI.md`, dan checklist S23 di `sprint-plan-rekomendasi.md` diperbarui.
+
+### Verifikasi
+
+- `lib/features/telegram/**/*.test.js` → **16/16 pass**.
+- `npm run test:coverage` → **140/140 pass**, coverage agregat **55,30% line / 79,58% branch / 75,30% funcs**, gate **41/57/68** lulus.
+- `npm run lint` → **0 error, 0 warning**.
+- `npm run format:check` → lulus setelah baseline Prettier.
+- `wc -l lib/features/telegram/bot.js` → **201 baris** (<400).
+- `systemctl is-active socai-bot` → **active** sebelum verifikasi restart. Restart produksi gagal dengan `Interactive authentication required`; owner/admin harus menjalankan restart lalu smoke `/status`, `/listproduk`, wizard `tambahproduk`, dan `/jadwalkonten`.
+
+### Commit
+
+| Commit | Pesan |
+|--------|-------|
+| `(this commit)` | `refactor(telegram): split bot factory, commands, wizards, media, schedule, schema (R3)` |

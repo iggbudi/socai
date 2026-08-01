@@ -55,7 +55,7 @@ Catatan:
 ```text
 .
 ├── server.js                         # Thin bootstrap web + shutdown
-├── telegram-bot.js                   # Entry tipis → lib/features/telegram/bot.js (F8)
+├── telegram-bot.js                   # Entry tipis → startBot() (F8/S23)
 ├── package.json                      # Scripts, deps, Node >=24
 ├── AGENTS.md                         # Instruksi agent project
 ├── README.md                         # Overview + diagram sistem
@@ -84,7 +84,7 @@ Catatan:
 │   │   ├── produk/                     # CRUD produk + upload (F4): routes, upload, view
 │   │   ├── pemasaran/                  # Domain, routes (+ Repliz accounts, F9), jobs, view + test (F5)
 │   │   ├── evaluasi/                   # Metrik M1–M7 + route /api/agent/metrics + view + test (F7)
-│   │   └── telegram/                   # Fitur bot (F8): bot.js (self-executing), helpers.js, access.js + test/
+│   │   └── telegram/                   # Fitur bot (F8/S23): factory, commands, wizards, media, schedule, schema + test/
 │   ├── env.js                        # Validasi env web/bot
 │   ├── web/                            # Express shell murni (F9): createApp, middleware/{csrf,csp}, routes/{pages,health}, health.js
 ├── public/uploads/                   # Upload gambar lokal
@@ -224,7 +224,7 @@ Repliz menggunakan `REPLIZ_API_KEY`, `REPLIZ_SECRET`, `REPLIZ_ACCOUNT_ID`, `REPL
 
 ## 9. Bot Telegram
 
-Entry point: `telegram-bot.js` (thin); logika: `lib/features/telegram/bot.js`; ACL: `lib/features/telegram/access.js`; user store: `telegram-users.json`.
+Entry point: `telegram-bot.js` (thin → `startBot()`); factory/wiring: `lib/features/telegram/{bot,commands}.js`; ACL: `lib/features/telegram/access.js`; user store: `telegram-users.json`. Import `bot.js` untuk test tidak meluncurkan long polling.
 
 | Role | Kemampuan |
 |---|---|
@@ -331,7 +331,7 @@ Suite utama mencakup sanitasi media, magic-byte image, AI limits, rate limit, pe
 
 - Jaga dokumentasi `CODEBASE_WIKI.md`, `AGENTS.md`, `README.md`, `autonomous.md`, dan `evaluasi.md` tetap sinkron.
 - Pertimbangkan migration runner eksplisit jika schema makin kompleks.
-- Pertimbangkan memecah `lib/features/telegram/bot.js` (commands/ + wizards/) setelah ada test harness bot (risiko runtime tanpa test).
+- Pertahankan `lib/features/telegram/bot.js` sebagai factory/startup tipis; perubahan command/wizard baru masuk modul terpisah dan ditambah test co-located.
 - Tambahkan adapter channel baru melalui pola `lib/features/channels/*` + tests.
 - Perluas metrics dashboard bila kebutuhan penelitian bertambah.
 
@@ -366,3 +366,4 @@ Rencana & status: `sprint-plan.md` · catatan sesi: `logbook.md` (Sesi 1 Agustus
 | S20 | `test(agent): cover approval gate paths, add notify/schedule seams (R1a)` | Tambah seam injeksi notifier/scheduler; uji approval bounded, pencegahan double-post, validasi status/ID, dan rejection path; `approval.js` 100% line/func |
 | S21 | `test(agent): inject deps into asisten/runs routes + SSE route tests (R1b)` | Tambah DI route agent + `handleAsistenChat`; 11 test SSE/rate-limit/agent-runs dengan fake pool/session; `agent/routes.js` 95,35% line / 91,67% funcs |
 | S22 | `style: apply prettier baseline` + `ci: add format check + coverage thresholds (R2)` + `fix(ci): stabilize coverage function threshold (S22)` | Prettier deterministik, `format:check`, coverage thresholds 41/57/68, dan CI menjadi 4 gate |
+| S23 | `refactor(telegram): split bot factory, commands, wizards, media, schedule, schema (R3)` | Bot tidak lagi self-executing; `bot.js` 201 baris, factory harness fake Telegraf, ekstraksi modul dan unit tests co-located |

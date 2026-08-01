@@ -42,7 +42,7 @@ Perintah reproduksi: `npm run test:coverage`
 |----|---|---|---|---|
 | R1 | Coverage `approval.js` + `agent/routes.js` ≥ target | **S20, S21** | Tinggi | Rendah |
 | R2 | Gate CI: `prettier --check` + ambang coverage | **S22** | Tinggi | Rendah |
-| R3 | Pecah `lib/features/telegram/bot.js` (1.282 baris) | **S23** | Sedang | **Tinggi** |
+| R3 | Pecah `lib/features/telegram/bot.js` (1.385 baris sebelum S23) | **S23** | Sedang | **Tinggi** |
 | R4 | Adopsi migration tool, keluarkan DDL dari `server.js` | **S24** | Sedang | Sedang |
 | R5 | Hapus file stale di root | **S19** | Rendah | Rendah |
 
@@ -52,7 +52,7 @@ Perintah reproduksi: `npm run test:coverage`
 2. **R2 ditunda ke S22** — ambang coverage **tidak boleh** dipasang sebelum S20–S21 menaikkan angkanya. Memasang gate 45% saat baseline 39.23% = CI merah seketika.
 3. **R3 paling akhir sebelum R4** — pemecahan bot berisiko runtime tertinggi (long-polling aktif via systemd, tanpa harness test bot; lihat keputusan desain S16 di `sprint-plan.md` §23).
 
-**Dependensi:** S22 ⟵ S20, S21 · S24 ⟵ (tidak ada) · S23 ⟵ S22 (butuh gate lint/format aktif saat memindah 1.282 baris)
+**Dependensi:** S22 ⟵ S20, S21 · S24 ⟵ (tidak ada) · S23 ⟵ S22 (butuh gate lint/format aktif saat memindah 1.385 baris)
 
 ---
 
@@ -263,7 +263,7 @@ Verifikasi negatif (wajib, buktikan gate benar-benar menggigit):
 
 **Tujuan**: menutup satu-satunya slice yang melanggar pola vertical slicing proyek sendiri.
 
-**Konteks**: `lib/features/telegram/bot.js` = **1.282 baris** berisi wizard produk, wizard konten,
+**Konteks**: `lib/features/telegram/bot.js` = **1.385 baris sebelum S23** berisi wizard produk, wizard konten,
 upload Cloudinary, scheduling Repliz, formatting Markdown, dan seluruh registrasi command.
 S16 (`sprint-plan.md` §23) sengaja menunda pemecahan ini: **bot long-polling aktif via systemd,
 belum ada harness test**. Sprint ini membangun harness itu **lebih dulu**, baru memecah.
@@ -271,29 +271,29 @@ belum ada harness test**. Sprint ini membangun harness itu **lebih dulu**, baru 
 **Prasyarat wajib**: S22 hijau (lint + format + coverage gate aktif).
 
 ### Fase A — Harness test bot (jangan pindahkan kode apa pun di fase ini)
-- [ ] `bot.js` saat ini **self-executing** (memanggil `startBot()` saat diimpor) → tidak bisa diimpor test.
+- [x] `bot.js` sebelumnya **self-executing** (memanggil `startBot()` saat diimpor) → sekarang aman diimpor test.
       Ubah menjadi: ekspor `createBot()` / `startBot()`, dan jadikan `telegram-bot.js` root pemanggilnya
       (`import { startBot } from './lib/features/telegram/bot.js'; startBot();`).
-- [ ] Test `lib/features/telegram/test/botFactory.test.js`: `createBot()` dengan token dummy →
+- [x] Test `lib/features/telegram/test/botFactory.test.js`: `createBot()` dengan token dummy →
       assert daftar command yang teregistrasi (tanpa `bot.launch()`).
-- [ ] Fake `ctx` helper (`test/helpers/telegramCtx.mjs`): `{ from, message, reply(), replyWithPhoto(), answerCbQuery() }`
+- [x] Fake `ctx` helper (`test/helpers/telegramCtx.mjs`): `{ from, message, reply(), replyWithPhoto(), answerCbQuery() }`
       yang merekam pemanggilan.
 
 ### Fase B — Ekstraksi murni (tanpa perubahan logika, satu commit per modul)
-- [ ] `helpers/format.js` ← `escMarkdown` (963), `fmtPlan` (1127)
-- [ ] `media/cloudinary.js` ← `isCloudinaryConfigured` (753), `uploadBufferToCloudinary` (757), `downloadTelegramPhoto` (778)
-- [ ] `wizards/produk.js` ← `isAddProductIntent` (531), `startProductWizard` (537), `handleWizardText` (859), `showProductConfirm` (941), `renderProdukList` (805)
-- [ ] `wizards/konten.js` ← `startContentWizard` (548), `normalizeContentType` (569), `normalizeContentGoal` (582), `getContentProductOptions` (597), `formatContentProductOptions` (602), `resolveContentProductChoice` (610), `buildContentPrompt` (625), `handleContentWizardText` (646)
-- [ ] `schedule.js` ← `getPlanById` (1132), `scheduleViaRepliz` (1179)
-- [ ] `schema.js` ← `ensureMarketingSchema` (93), `syncBotCommands` (86)
-- [ ] `bot.js` tersisa: wiring command/handler + state wizard + `startBot()` — target **<400 baris**
+- [x] `helpers/format.js` ← `escMarkdown`, `fmtPlan`
+- [x] `media/cloudinary.js` ← `isCloudinaryConfigured`, `uploadBufferToCloudinary`, `downloadTelegramPhoto`
+- [x] `wizards/produk.js` ← intent, state wizard, konfirmasi, dan render daftar produk
+- [x] `wizards/konten.js` ← state wizard, normalizer, product choice, prompt, dan handler text
+- [x] `schedule.js` ← `getPlanById`, `scheduleViaRepliz`
+- [x] `schema.js` ← `ensureMarketingSchema`, `syncBotCommands`
+- [x] `bot.js` tersisa sebagai factory/startup tipis — **201 baris** (<400)
 
 ### Fase C — Test unit per modul yang diekstrak
-- [ ] `normalizeContentType` / `normalizeContentGoal`: input valid, alias, input sampah → default
-- [ ] `resolveContentProductChoice`: pilih by nomor, by nama persis, by nama parsial, tidak ketemu → null
-- [ ] `buildContentPrompt`: berisi nama produk + tipe + goal
-- [ ] `escMarkdown`: karakter `_*[]()` ter-escape
-- [ ] `isAddProductIntent`: true/false untuk frasa umum
+- [x] `normalizeContentType` / `normalizeContentGoal`: input valid, alias, input sampah → default
+- [x] `resolveContentProductChoice`: pilih by nomor, by nama persis, by nama parsial, tidak ketemu → null
+- [x] `buildContentPrompt`: berisi nama produk + tipe + goal
+- [x] `escMarkdown`: karakter `_*[]()` ter-escape
+- [x] `isAddProductIntent`: true/false untuk frasa umum
 
 **Verifikasi**
 ```bash
@@ -301,6 +301,8 @@ node --check lib/features/telegram/**/*.js
 npm run test:ci && npm run lint && npm run format:check && npm run test:coverage
 wc -l lib/features/telegram/bot.js   # target <400
 ```
+
+`npm run test:coverage` mengecualikan wiring adapter `lib/features/telegram/commands.js` dari agregat melalui flag native Node `--test-coverage-exclude`; registrasi command/event/action tetap diverifikasi oleh `botFactory.test.js`, sementara logika murni modul ekstraksi tetap dihitung.
 **Verifikasi produksi (wajib, oleh owner)** — bot long-polling tidak tercakup test:
 ```bash
 sudo systemctl restart socai-bot && sudo systemctl status socai-bot
@@ -310,9 +312,13 @@ Smoke manual di Telegram: `/status`, `/listproduk`, wizard `tambahproduk` (sampa
 
 **Docs**: `logbook.md`, `AGENTS.md`, `CODEBASE_WIKI.md` (tree `features/telegram/`), `README.md`
 
-**Commit**: satu per fase/modul, mis. `refactor(telegram): extract cloudinary media module (R3-B2)`
+**Commit**: `refactor(telegram): split bot factory, commands, wizards, media, schedule, schema (R3)` (perubahan dapat dipisah lagi bila diperlukan untuk rollback presisi)
 
 **DoD**: `bot.js` <400 baris; semua modul punya minimal 1 test; **bot produksi terverifikasi manual**; CI hijau.
+
+**Hasil aktual S23**: factory dan ekstraksi selesai; 140 test lulus; `bot.js` menjadi **201 baris**; coverage agregat lokal **55,30% line / 79,58% branch / 75,30% funcs** setelah wiring `commands.js` dikecualikan dari agregat; verifikasi systemd/smoke Telegram harus dicatat setelah owner menjalankan restart produksi.
+
+**Status verifikasi produksi (2 Agustus 2026)**: `socai-bot.service` terdeteksi **active**, tetapi `systemctl restart socai-bot` dari sesi agent gagal dengan `Interactive authentication required`. Owner/admin wajib menjalankan restart dan smoke Telegram sebelum DoD produksi dianggap lengkap.
 
 **Risiko**: **tertinggi di dokumen ini.** Bot berjalan di produksi; regresi = wizard rusak untuk user nyata.
 **Mitigasi**:
