@@ -950,4 +950,26 @@ Migration tidak dipasang sebagai `ExecStartPre` systemd karena user runtime tida
 
 ### Commit
 
-Commit dilakukan bersama kenaikan gate coverage S25 setelah verifikasi coverage tiga kali.
+Commit dilakukan terpisah dari kenaikan gate coverage S25 setelah verifikasi coverage tiga kali.
+
+## Sprint 25 — Naikkan Gate Coverage (B1) (2 Agustus 2026)
+
+### Perubahan
+
+- Menaikkan threshold native Node di `package.json` dari **41/57/68** menjadi
+  **53% lines / 73% functions / 78% branches**.
+- Tiga eksekusi berurutan menghasilkan angka identik: **55,88% line / 79,93% branch /
+  75,73% functions**; margin gate sekitar 2–3pp menjaga toleransi variance runner.
+- Verifikasi negatif sementara memakai line threshold 95% menghasilkan **exit 1**
+  (`55,88%` tidak memenuhi `95%`), lalu `package.json` dipulihkan dan gate baru diterapkan.
+- Mempertegas aturan bahwa threshold hanya boleh naik; penurunan wajib menyertakan angka dan
+  alasan di `logbook.md`.
+
+### Verifikasi
+
+- `npm run test:ci` → **145/145 pass + QA PASSED**.
+- `npm run test:coverage` → lulus gate **53/73/78** dengan coverage **55,88% / 79,93% / 75,73%**.
+
+### Commit
+
+`ci: raise coverage gate to 53/73/78 (B1)`

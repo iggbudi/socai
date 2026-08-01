@@ -36,7 +36,7 @@ npm run bot               # bot Telegram long-polling
 npm run dev               # web + bot di background
 npm test                  # unit tests
 npm run test:ci           # unit + qa-smoke tanpa HTTP
-npm run test:coverage     # coverage dengan threshold CI (41/57/68)
+npm run test:coverage     # coverage dengan threshold CI (53/73/78)
 npm run lint              # ESLint
 npm run format:check     # Prettier check (CI gate)
 npm run migrate:up       # apply versioned PostgreSQL schema
@@ -380,4 +380,5 @@ Rencana & status: `sprint-plan.md` · catatan sesi: `logbook.md` (Sesi 1 Agustus
 | S22 | `style: apply prettier baseline` + `ci: add format check + coverage thresholds (R2)` + `fix(ci): stabilize coverage function threshold (S22)` | Prettier deterministik, `format:check`, coverage thresholds 41/57/68, dan CI menjadi 4 gate |
 | S23 | `refactor(telegram): split bot factory, commands, wizards, media, schedule, schema (R3)` | Bot tidak lagi self-executing; `bot.js` 201 baris, factory harness fake Telegraf, ekstraksi modul dan unit tests co-located |
 | S24 | `feat(db): versioned migrations, remove DDL from boot path (R4)` | Tambah `node-pg-migrate`, dua baseline migration, schema health guard, dan deploy runbook tanpa DDL runtime |
-| S25-B4 | `(worktree)` | Memindahkan enam test Telegram ke `lib/features/telegram/test/` dan menetapkan konvensi co-location; suite tetap 145 test |
+| S25-B4 | `ef2aba0` | Memindahkan enam test Telegram ke `lib/features/telegram/test/` dan menetapkan konvensi co-location; suite tetap 145 test |
+| S25-B1 | `(this commit)` | Menaikkan gate coverage native Node menjadi 53/73/78 setelah tiga pengukuran stabil; negative threshold check terbukti exit 1 |
