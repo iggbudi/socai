@@ -637,5 +637,5 @@ Seluruh bot masuk `lib/features/telegram/`; root entry jadi tipis (pola sama den
 ### Commit
 | Commit | Pesan |
 |--------|-------|
-| `(F8)` | `refactor(telegram): move telegram feature to lib/features/ (vertical slicing F8)` |
+| `28b3e78` | `refactor(telegram): move telegram feature to lib/features/ (vertical slicing F8)` |
 
