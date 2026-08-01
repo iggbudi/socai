@@ -1,6 +1,7 @@
 import 'dotenv/config';
 import { validateWebEnvironment } from './lib/env.js';
-import { pool, agentSessions, agentSessionLastUsed, agentSessionPromises, closeAgentPools } from './lib/agent.js';
+import { pool, closeAgentPools } from './lib/shared/db.js';
+import { agentSessions, agentSessionLastUsed, agentSessionPromises } from './lib/agent.js';
 import { initAgentRunsSchema } from './lib/agentRuns.js';
 import { createWebApp } from './lib/web/createApp.js';
 import {

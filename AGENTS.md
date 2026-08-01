@@ -6,7 +6,7 @@ Node.js ESM app for **Batik Bakaran** product & marketing management:
 
 - **Web app** (`server.js` bootstrap + `lib/web/`) — Express 5, session auth, inline HTML pages, REST API, AI chat (SSE)
 - **Telegram bot** (`telegram-bot.js`) — Telegraf, content wizards, Repliz scheduling, shared AI agent
-- **Shared `lib/` modules** — DB pools, AI agent, rate limits, image/URL validation, Repliz client, env validation
+- **Shared `lib/` modules** — DB pools (`lib/shared/db.js`), AI agent, rate limits, image/URL validation, Repliz client, env validation
 - **PostgreSQL** — `produk`, `pemasaran`, `users`, `user_sessions`
 - **Repliz** — optional multi-channel content scheduling/sync (Threads + Instagram via `lib/channels/`)
 - **Cloudinary** — optional image upload from Telegram marketing wizard
@@ -45,7 +45,7 @@ Copy `.env.example` → `.env` before running. Web validates env on startup via 
 | `SESSION_SECRET` | Express session secret; required in production |
 | `TELEGRAM_SUPER_ADMIN_ID` | Telegram user ID with full bot access + `/adduser` |
 | `ALLOWED_IMAGE_HOSTS` | Comma-separated HTTPS hosts for external image URLs (default `res.cloudinary.com`); local `/uploads/...` always allowed |
-| `DB_USER`, `DB_PASSWORD`, `DB_NAME`, `DB_HOST`, `DB_PORT` | Main PostgreSQL pool (`lib/agent.js` → `pool`) |
+| `DB_USER`, `DB_PASSWORD`, `DB_NAME`, `DB_HOST`, `DB_PORT` | Main PostgreSQL pool (`lib/shared/db.js` → `pool`) |
 | `DB_AI_READ_USER`, `DB_AI_READ_PASSWORD` | Read-only pool for AI `db_query` (falls back to `DB_USER` with warning if unset) |
 | `AI_MESSAGE_MAX_LENGTH` | Max chars per AI message (default `4000`) |
 | `WEB_AI_RATE_LIMIT`, `WEB_AI_RATE_WINDOW_MS` | Web `/api/asisten` rate limit (default 10/min) |
@@ -79,7 +79,8 @@ Copy `.env.example` → `.env` before running. Web validates env on startup via 
 
 | Module | Role |
 |--------|------|
-| `lib/agent.js` | AI agent (`@earendil-works/pi-coding-agent`), `pool` + `aiReadPool`, session map, `initAgent()`, tools `db_query` (SELECT-only), `web_search`, actuator tools (`get_calendar_gaps`, `save_content_plan`, `schedule_content`, `sync_content_status`), active run context exports, `closeAgentPools()` |
+| `lib/shared/db.js` | PostgreSQL pools (shared infra): `pool` (write), `aiReadPool` (read-only untuk AI `db_query`), `closeAgentPools()` — tanpa import dari `lib/features/` |
+| `lib/agent.js` | AI agent (`@earendil-works/pi-coding-agent`), session map, `initAgent()`, tools `db_query` (SELECT-only), `web_search`, actuator tools (`get_calendar_gaps`, `save_content_plan`, `schedule_content`, `sync_content_status`), active run context exports |
 | `lib/agentRuns.js` | Research audit log: `initAgentRunsSchema`, `createAgentRun`, `logToolCall`, `completeAgentRun`, `getAgentRunMetrics`, `listAgentRuns` |
 | `lib/evaluationMetrics.js` | Metrik penelitian M1–M7: `getEvaluationMetrics()`, `resolveEvaluationPeriod()` |
 | `lib/actuator/` | Bounded autonomy layer: `resolveAutonomyMode`, policy checks, wrappers around `pemasaran.js` write paths |
@@ -110,7 +111,7 @@ Copy `.env.example` → `.env` before running. Web validates env on startup via 
 - **Image URL whitelist** — `sanitizeImageUrl()` on produk/pemasaran/Repliz image fields
 - **Upload validation** — multer extension/mime filter + magic-byte check; renames extension to match detected type; deletes invalid files
 - **AI limits** — `normalizeAiMessage()` length cap; `WEB_AI_RATE_LIMIT` on web, `TELEGRAM_AI_RATE_LIMIT` on bot free text
-- **DB read-only pool** — AI `db_query` uses `aiReadPool` (dedicated `DB_AI_READ_*` creds recommended in production)
+- **DB read-only pool** — AI `db_query` uses `aiReadPool` (`lib/shared/db.js`; dedicated `DB_AI_READ_*` creds recommended in production)
 - **AI `db_query` sandbox** — SELECT only, no multi-statement, keyword blocklist, single-table reads (`produk`/`pemasaran`), no JOIN, 1000-char & 50-row caps
 - **Graceful shutdown** — `server.js` handles `SIGINT`/`SIGTERM`: stops intervals, aborts web agent sessions, closes HTTP server, `closeAgentPools()`
 - **Helmet + CSP** — enabled with per-request nonce (`lib/web/middleware/csp.js`); inline `<script>`/`<style>` in views use `nonce` attribute; no `style-src 'unsafe-inline'` (styles via CSS classes); `script-src-attr 'none'` — views must use `addEventListener` in nonce scripts (shared `HAMBURGER_BIND_JS` in `lib/web/views/pageInit.js`), never HTML `onclick`/`onchange` attributes

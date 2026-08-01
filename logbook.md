@@ -399,3 +399,32 @@ Pindahkan inline styles ke CSS classes agar `style-src` tidak perlu `'unsafe-inl
 | `e0bc5e3` | docs: record A8 decision - DB password rotation not needed (owner, 1 Aug 2026) |
 | (berikutnya) | fix(web): guard logout CSRF body (no 500); docs: deploy & E2E verification |
 
+---
+
+## Vertical Slicing — Fase 0: Ekstraksi DB Pools (1 Agustus 2026, lanjutan)
+
+### Tujuan
+Mulai restrukturisasi per fitur (vertical slicing): potong coupling terbesar — `lib/agent.js` (AI agent) tidak lagi memegang PostgreSQL pools.
+
+### Perubahan (kode)
+- **`lib/shared/db.js` (baru)** — `pool`, `aiReadPool`, `resolveAiReadPoolCredentials()` (fallback `DB_USER` + warning), `closeAgentPools()`. Aturan: shared infra, **tidak boleh import dari `lib/features/`**.
+- **`lib/agent.js`** — hapus definisi pools (import `pg` ikut dihapus); kini import `{ pool, aiReadPool }` dari `./shared/db.js`.
+- **11 importer diupdate**: `server.js`, `telegram-bot.js`, `lib/agentRunner.js`, `lib/web/createApp.js`, `lib/web/replizJobs.js`, `lib/web/routes/auth.js`, `lib/web/routes/health.js`, `lib/web/routes/api/{produk,pemasaran,agentRuns,asisten}.js`, `lib/autonomousJobs.js` (3 dynamic import).
+
+### Verifikasi
+- `npm run test:ci` → **103/103 unit + QA PASSED**.
+- Satu kali gagal di tengah: `lib/web/routes/api/asisten.js` masih import `pool` dari `agent.js` (import multi-line terlewat) → `SyntaxError: does not provide an export named 'pool'` → diperbaiki.
+- `grep` final: tidak ada sisa `import ... pool ... from '...agent.js'`; sisa import `agent.js` hanya export session/agent (`agentSessions`, `initAgent`, dll) — sudah benar.
+
+### Docs
+- `AGENTS.md` (tabel arsitektur + env `DB_*`), `README.md` (tree `lib/shared/` + prinsip shared core), `CODEBASE_WIKI.md` (tree, prinsip §4, §7, changelog), `sprint-plan.md` (Sprint 8 checklist + timeline).
+
+### Commit
+| Commit | Pesan |
+|--------|-------|
+| `391ea08` | `refactor(db): extract pool/aiReadPool to lib/shared/db.js (vertical slicing F0)` |
+
+### Catatan untuk fase berikutnya
+- F1: pindahkan shared murni ke `lib/shared/` (`wibTime`, `rateLimit`, `mediaUrl`, `imageFile`, `html`, `repliz`, `telegramNotify`) + co-located test.
+- `telegramNotify.js` wajib ke `shared/` (dipakai agent + telegram — mencegah cycle di fase telegram).
+

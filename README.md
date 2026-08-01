@@ -46,7 +46,9 @@ socai/
 ├── server.js              # Bootstrap web + Repliz background jobs
 ├── telegram-bot.js        # Entry point bot Telegram
 ├── lib/
-│   ├── agent.js           # AI agent, db_query, web_search, connection pools
+│   ├── shared/
+│   │   └── db.js           # pool + aiReadPool (shared infra, F0)
+│   ├── agent.js            # AI agent, db_query, web_search, sessions
 │   ├── pemasaran.js       # Logik shared pemasaran & Repliz
 │   ├── repliz.js          # HTTP client Repliz
 │   ├── telegramAccess.js  # Role-based ACL bot
@@ -159,7 +161,7 @@ flowchart TB
 | Prinsip | Implementasi |
 |---------|--------------|
 | **Bounded autonomy** | `db_query` SELECT-only; write via actuator + `AUTONOMY_MODE` (`assistive` / `supervised` / `bounded`) |
-| **Shared core** | `lib/agent.js`, `lib/pemasaran.js`, `lib/actuator/` dipakai web & bot |
+| **Shared core** | `lib/shared/db.js` (pools), `lib/agent.js`, `lib/pemasaran.js`, `lib/actuator/` dipakai web & bot |
 | **Defense in depth** | CSRF, CSP nonce, rate limit, role ACL, URL whitelist, policy caps |
 | **Observability** | Setiap agent run & tool call tercatat di `agent_runs` |
 | **Human-in-the-loop** | Default `assistive`; supervised/bounded untuk skenario penelitian |

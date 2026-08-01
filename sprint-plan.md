@@ -219,6 +219,7 @@ Dokumen ini adalah rencana kerja berbasis sprint untuk menindaklanjuti hasil aud
 | S5 | 0.5–1 hari | CSRF + trust proxy + test |
 | S6 | 1 hari | Test route level |
 | S7 | 0.5 hari | Docs final + release |
+| S8 | 0.5 hari | Vertical slicing F0: `pool`/`aiReadPool` → `lib/shared/db.js` |
 | **Total** | **±5–7 hari kerja** | |
 
 ---
@@ -237,5 +238,25 @@ Dokumen ini adalah rencana kerja berbasis sprint untuk menindaklanjuti hasil aud
 - Semua artefak ops (unit systemd, contoh vhost Apache) di-version di `deploy/` agar terdokumentasi dan bisa di-audit.
 - Setiap sprint boleh dipecah menjadi commit lebih kecil selama seluruh DoD terpenuhi.
 - Checklist `- [ ]` di dokumen ini di-update statusnya di akhir setiap sprint (dan hasilnya dicatat di `logbook.md`).
+
+---
+
+## 15. Sprint 8 — Vertical Slicing F0: Ekstraksi DB Pools (1 Agustus 2026)
+
+**Tujuan**: potong coupling terbesar — `lib/agent.js` (AI agent) tidak lagi memegang PostgreSQL pools; mulai struktur per fitur (`lib/shared/`).
+
+**Tasks (kode)**
+- [x] Buat `lib/shared/db.js` — `pool`, `aiReadPool`, `resolveAiReadPoolCredentials()` (fallback + warning), `closeAgentPools()`
+- [x] `lib/agent.js` — hapus definisi pools & import `pg`; import dari `./shared/db.js`
+- [x] Update 11 importer: `server.js`, `telegram-bot.js`, `lib/agentRunner.js`, `lib/web/createApp.js`, `lib/web/replizJobs.js`, `lib/web/routes/{auth,health}.js`, `lib/web/routes/api/{produk,pemasaran,agentRuns,asisten}.js`, `lib/autonomousJobs.js` (3 dynamic import)
+- [x] Verifikasi `npm run test:ci` → 103/103 unit + QA PASSED
+
+**Docs**: `AGENTS.md`, `README.md`, `CODEBASE_WIKI.md`, `logbook.md`
+
+**Commit**: `refactor(db): extract pool/aiReadPool to lib/shared/db.js (vertical slicing F0)`
+
+**DoD**: semua importer pool mengarah ke `lib/shared/db.js`; test hijau; CI hijau.
+
+**Fase berikutnya (rencana F1)**: pindahkan shared murni (`wibTime`, `rateLimit`, `mediaUrl`, `imageFile`, `html`, `repliz`, `telegramNotify`) ke `lib/shared/`; mulai co-located test.
 
 

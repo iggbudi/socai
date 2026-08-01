@@ -61,7 +61,9 @@ Catatan:
 ├── CODEBASE_WIKI.md                  # Dokumen ini
 ├── scripts/                          # Export metrics + SQL helper
 ├── lib/
-│   ├── agent.js                      # AI agent, pools, tools, sessions
+│   ├── shared/
+│   │   └── db.js                      # pool + aiReadPool + closeAgentPools (F0)
+│   ├── agent.js                       # AI agent, tools, sessions
 │   ├── agentRunner.js                # Programmatic agent task runner
 │   ├── agentRuns.js                  # Audit log agent_runs
 │   ├── autonomousConfig.js           # Config autonomy mode
@@ -113,7 +115,7 @@ flowchart TB
 
 Prinsip desain:
 
-- **Shared core**: web dan bot memakai modul yang sama (`agent.js`, `pemasaran.js`, `actuator/`).
+- **Shared core**: web dan bot memakai modul yang sama (`lib/shared/db.js` pools, `agent.js`, `pemasaran.js`, `actuator/`).
 - **Bounded autonomy**: AI tidak bebas menulis DB; write path lewat actuator dan policy.
 - **Defense in depth**: CSRF, CSP nonce, rate limit, ACL Telegram, upload validation, DB read-only AI.
 - **Observability penelitian**: agent run/tool call dicatat untuk evaluasi M1–M7.
@@ -181,7 +183,7 @@ Semua mutasi `/api/*` wajib lolos CSRF.
 
 ## 7. AI Agent dan Bounded Autonomy
 
-`lib/agent.js` mengekspos `pool`, `aiReadPool`, `agentSessions`, `initAgent()`, `closeAgentPools()`, dan context audit run aktif.
+PostgreSQL pools ada di `lib/shared/db.js` (vertical slicing F0): `pool`, `aiReadPool`, `closeAgentPools()`. `lib/agent.js` mengekspos `agentSessions`, `initAgent()`, dan context audit run aktif.
 
 Dependency: `@earendil-works/pi-coding-agent` **^0.83.0**. Sejak 0.83.0, API `AuthStorage`/`ModelRegistry` diganti `ModelRuntime`:
 `ModelRuntime.create({ allowModelNetwork: false })` (credentials dari `auth.json` + env `XIAOMI_API_KEY` dll), resolve model via `modelRuntime.getModel(provider, modelId)`, dan diteruskan ke `createAgentSession({ modelRuntime, ... })`.
@@ -347,3 +349,4 @@ Rencana & status: `sprint-plan.md` · catatan sesi: `logbook.md` (Sesi 1 Agustus
 | S5 | `10d8f8d` | A6: CSRF origin check hanya `APP_URL`+localhost (tolak spoof Host/X-Forwarded-*); `trust proxy: 'loopback'`; `test/csrfMiddleware.test.js` |
 | S6 | `543cd32` | A7: route-level tests 2→9 (health shape, auth guard 401, logout, CSRF e2e, redirect) — 103/103 test |
 | S7 | `67305d1` | Finalisasi docs (changelog, retrospective), regression penuh, tag `v1.1.0` |
+| S8 | `391ea08` | Vertical slicing F0: `pool`/`aiReadPool`/`closeAgentPools()` diekstrak `lib/agent.js` → `lib/shared/db.js`; 11 importer diupdate (web, bot, agentRunner, autonomousJobs) — tanpa perubahan behavior |
