@@ -23,4 +23,11 @@ export default [
       'no-control-regex': 'off',
     },
   },
+  {
+    files: ['lib/**/*.js'],
+    ignores: ['lib/**/*.test.js'],
+    rules: {
+      'no-console': 'error',
+    },
+  },
 ];
