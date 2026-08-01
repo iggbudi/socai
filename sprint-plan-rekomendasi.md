@@ -101,28 +101,28 @@ method `query(sql, params)` — pertahankan pola ini, jangan tambah library mock
 `handlePostSaveApproval` (45–52), `approvePlanSchedule` (55–83), error path `rejectPlanSchedule` (97–100).
 
 **Tasks (kode)**
-- [ ] `lib/features/agent/approval.js` — tambah seam injeksi agar dapat diuji tanpa jaringan:
+- [x] `lib/features/agent/approval.js` — tambah seam injeksi agar dapat diuji tanpa jaringan:
       ubah `notifyScheduleApprovalRequest(plans)` → `notifyScheduleApprovalRequest(plans, { notify = notifyTelegramOperators } = {})`,
       dan `handlePostSaveApproval(dbPool, { ids }, { autonomyMode, notify })` meneruskan `notify`.
       **Default tetap sama** → nol perubahan perilaku produksi.
-- [ ] Idem untuk `approvePlanSchedule(dbPool, planId, { schedule = schedulePlanToRepliz } = {})` —
+- [x] Idem untuk `approvePlanSchedule(dbPool, planId, { schedule = schedulePlanToRepliz } = {})` —
       hindari memanggil Repliz API nyata di test.
 
 **Tasks (test)** — tambah di `lib/features/agent/test/scheduleApproval.test.js`:
-- [ ] `notifyScheduleApprovalRequest: kirim 1 pesan per plan dengan inline_keyboard approve/reject`
+- [x] `notifyScheduleApprovalRequest: kirim 1 pesan per plan dengan inline_keyboard approve/reject`
       → assert `callback_data` = `approve_schedule:<id>` dan `reject_schedule:<id>`
-- [ ] `notifyScheduleApprovalRequest: plans kosong → { sent: 0, plans: 0 } tanpa memanggil notify`
-- [ ] `handlePostSaveApproval: autonomyMode assistive → { requested: false }, pool tidak disentuh`
-- [ ] `handlePostSaveApproval: bounded + REQUIRE_APPROVAL=true + ids valid → requested true + notify terpanggil`
-- [ ] `handlePostSaveApproval: bounded tapi semua id sudah punya repliz_schedule_id → requested false`
-- [ ] `approvePlanSchedule: id non-numerik/0/negatif → throw statusCode 400`
-- [ ] `approvePlanSchedule: plan tidak ada → statusCode 404`
-- [ ] `approvePlanSchedule: plan sudah punya repliz_schedule_id → statusCode 409` ← **cegah double-post**
-- [ ] `approvePlanSchedule: status 'published' → statusCode 400`
-- [ ] `approvePlanSchedule: status 'pending_approval' → memanggil schedule dengan force:false`
-- [ ] `approvePlanSchedule: status 'draft' → juga diizinkan`
-- [ ] `rejectPlanSchedule: baris tidak match → statusCode 404`
-- [ ] `rejectPlanSchedule: pending_approval → status jadi 'cancelled'`
+- [x] `notifyScheduleApprovalRequest: plans kosong → { sent: 0, plans: 0 } tanpa memanggil notify`
+- [x] `handlePostSaveApproval: autonomyMode assistive → { requested: false }, pool tidak disentuh`
+- [x] `handlePostSaveApproval: bounded + REQUIRE_APPROVAL=true + ids valid → requested true + notify terpanggil`
+- [x] `handlePostSaveApproval: bounded tapi semua id sudah punya repliz_schedule_id → requested false`
+- [x] `approvePlanSchedule: id non-numerik/0/negatif → throw statusCode 400`
+- [x] `approvePlanSchedule: plan tidak ada → statusCode 404`
+- [x] `approvePlanSchedule: plan sudah punya repliz_schedule_id → statusCode 409` ← **cegah double-post**
+- [x] `approvePlanSchedule: status 'published' → statusCode 400`
+- [x] `approvePlanSchedule: status 'pending_approval' → memanggil schedule dengan force:false`
+- [x] `approvePlanSchedule: status 'draft' → juga diizinkan`
+- [x] `rejectPlanSchedule: baris tidak match → statusCode 404`
+- [x] `rejectPlanSchedule: pending_approval → status jadi 'cancelled'`
 
 **Verifikasi**
 ```bash
@@ -134,7 +134,10 @@ npm run test:ci && npm run lint
 
 **Commit**: `test(agent): cover approval gate paths, add notify/schedule seams (R1a)`
 
-**DoD**: `approval.js` ≥85% line & 100% funcs; 106 → ~119 test; CI hijau.
+**DoD**: `approval.js` ≥85% line & 100% funcs; 106 → 118 test; CI hijau.
+
+**Hasil aktual (1 Agustus 2026)**: `approval.js` **100% line / 84,38% branch / 100% funcs**;
+suite menjadi **118 test**; coverage keseluruhan **40,16% line / 71,73% branch / 55,72% funcs**.
 
 **Risiko**: menambah parameter opsional bisa memicu argumen salah di call-site.
 **Mitigasi**: `grep -rn 'handlePostSaveApproval\|approvePlanSchedule\|notifyScheduleApprovalRequest' lib/` sebelum & sesudah — pastikan semua call-site produksi tidak berubah.

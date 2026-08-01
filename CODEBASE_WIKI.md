@@ -360,3 +360,4 @@ Rencana & status: `sprint-plan.md` · catatan sesi: `logbook.md` (Sesi 1 Agustus
 | S17 | `acc3c47` | Vertical slicing F9 (final): 2 route web terakhir → fitur (`channels/routes.js`, `pemasaran/routes.js` + Repliz accounts); CI `checkout@v5`/`setup-node@v5`; web shell murni |
 | S18 | `1463039` | Prioritas 2 tooling: 3 test background jobs (106 total); ESLint 9 flat config + Prettier (0 error lint, masuk CI); script `test:coverage` — baseline lines 39% / branches 70.6% / funcs 54.2% |
 | S19 | `chore: remove stale root debug scripts (R5)` | Hapus probe debug root `test-agent.js`/`test-bot.js`; pindahkan materi prompt marketing ke `docs/`; verifikasi referensi dan `.gitignore` |
+| S20 | `test(agent): cover approval gate paths, add notify/schedule seams (R1a)` | Tambah seam injeksi notifier/scheduler; uji approval bounded, pencegahan double-post, validasi status/ID, dan rejection path; `approval.js` 100% line/func |

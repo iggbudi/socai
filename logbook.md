@@ -781,3 +781,25 @@ Membersihkan root repo dari probe debug manual dan menempatkan materi prompt mar
 
 ### Commit
 `chore: remove stale root debug scripts (R5)`
+
+---
+
+## Sprint 20 — Coverage `approval.js` ≥ 85% (R1a) (1 Agustus 2026, lanjutan)
+
+### Tujuan
+Menguji penuh gerbang approval yang menentukan apakah agent bounded boleh meneruskan penjadwalan ke Repliz.
+
+### Perubahan
+- **Seam notifier**: `notifyScheduleApprovalRequest(plans, { notify })` menerima notifier opsional dengan default `notifyTelegramOperators`; `handlePostSaveApproval` meneruskan seam tanpa mengubah default produksi.
+- **Seam scheduler**: `approvePlanSchedule(dbPool, planId, { schedule })` menerima scheduler opsional dengan default `schedulePlanToRepliz`, sehingga test tidak memanggil Repliz nyata.
+- **Regression tests**: tambah 12 test untuk keyboard approve/reject, empty plans, mode assistive/bounded, rencana sudah terjadwal, validasi ID/status, draft/pending approval, dan error rejection.
+- **Call-site produksi** tetap menggunakan default function sehingga tidak ada perubahan API pemanggil.
+
+### Verifikasi
+- Targeted coverage `approval.js` → **100% line / 84,38% branch / 100% funcs**.
+- `npm run test:coverage` → **118/118 pass**, keseluruhan **40,16% line / 71,73% branch / 55,72% funcs**.
+- `npm run test:ci` → **118/118 pass + QA PASSED**.
+- `npm run lint` → **0 error, 0 warning**.
+
+### Commit
+`test(agent): cover approval gate paths, add notify/schedule seams (R1a)`
