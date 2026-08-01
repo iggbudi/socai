@@ -349,4 +349,4 @@ Rencana & status: `sprint-plan.md` · catatan sesi: `logbook.md` (Sesi 1 Agustus
 | S5 | `10d8f8d` | A6: CSRF origin check hanya `APP_URL`+localhost (tolak spoof Host/X-Forwarded-*); `trust proxy: 'loopback'`; `test/csrfMiddleware.test.js` |
 | S6 | `543cd32` | A7: route-level tests 2→9 (health shape, auth guard 401, logout, CSRF e2e, redirect) — 103/103 test |
 | S7 | `67305d1` | Finalisasi docs (changelog, retrospective), regression penuh, tag `v1.1.0` |
-| S8 | `391ea08` | Vertical slicing F0: `pool`/`aiReadPool`/`closeAgentPools()` diekstrak `lib/agent.js` → `lib/shared/db.js`; 11 importer diupdate (web, bot, agentRunner, autonomousJobs) — tanpa perubahan behavior |
+| S8 | `ea6f555` | Vertical slicing F0: `pool`/`aiReadPool`/`closeAgentPools()` diekstrak `lib/agent.js` → `lib/shared/db.js`; 11 importer diupdate (web, bot, agentRunner, autonomousJobs) — tanpa perubahan behavior |

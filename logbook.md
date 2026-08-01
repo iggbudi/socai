@@ -422,7 +422,7 @@ Mulai restrukturisasi per fitur (vertical slicing): potong coupling terbesar —
 ### Commit
 | Commit | Pesan |
 |--------|-------|
-| `391ea08` | `refactor(db): extract pool/aiReadPool to lib/shared/db.js (vertical slicing F0)` |
+| `ea6f555` | `refactor(db): extract pool/aiReadPool to lib/shared/db.js (vertical slicing F0)` |
 
 ### Catatan untuk fase berikutnya
 - F1: pindahkan shared murni ke `lib/shared/` (`wibTime`, `rateLimit`, `mediaUrl`, `imageFile`, `html`, `repliz`, `telegramNotify`) + co-located test.
