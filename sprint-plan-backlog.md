@@ -240,7 +240,7 @@ coverage yang dilaporkan CI bukan coverage proyek. Sprint ini mencabutnya.
 ### Fase D — Cabut pengecualian dan setel ulang gate
 - [x] Hapus `--test-coverage-exclude=lib/features/telegram/commands.js` dari `package.json`
 - [x] Ukur agregat sesungguhnya 3× berturut; hasil identik **80,84/78,58/76,52**
-- [x] Pertahankan gate 53/73/78 karena sudah sekitar 2pp di bawah hasil aktual
+- [x] Pertahankan gate minimum 53/73/78; no-exclude actual **80,84/78,58/76,52**
 - [x] **Bar kelulusan sprint**: agregat **tanpa** exclude harus **≥53% line / ≥73% funcs** —
       yaitu setidaknya menyamai gate yang S25 tetapkan. Bila belum tercapai, sprint belum selesai;
       **dilarang** menurunkan gate atau mengembalikan flag exclude untuk "menghijaukan" CI.
@@ -367,8 +367,8 @@ regresi lolos CI, dan alarm skema palsu.
 | Coverage line (**tanpa** exclude) | 39,97% | 39,97% | **80,84%** |
 | Coverage funcs (**tanpa** exclude) | 51,44% | 51,44% | **76,52%** |
 | Coverage branch (**tanpa** exclude) | 69,62% | 69,62% | **78,58%** |
-| Gate CI coverage | 41/57/68 | 53/73/78 | = aktual − 2pp |
-| Selisih gate vs aktual | ~15pp | ~2pp | terukur; gate minimum dipertahankan |
+| Gate CI coverage | 41/57/68 | 53/73/78 | tetap 53/73/78 (tidak diturunkan) |
+| Selisih gate vs aktual | ~15pp | ~2pp | line/func >2pp; branch +0,58pp |
 | `--test-coverage-exclude` aktif | 1 | 1 | **0** |
 | `commands.js` LOC | 795 | 795 | **100** |
 | Jumlah test | 145 | ~152 | **208** |
