@@ -1124,3 +1124,39 @@ dibulatkan ke bawah**.
 - Verifikasi negatif: gate 99/99/99 → **exit 1**. Gate terbukti bisa merah, bukan sekadar hijau.
 - Empat gate CI: `test:ci` exit 0, `lint` exit 0, `format:check` exit 0, `test:coverage` exit 0.
 - Commit: `7365624`.
+
+## Sprint 32 — Perbaiki Dua Bug Perilaku Terkunci (D3, D4) (3 Agustus 2026)
+
+### Konteks
+
+`sprint-plan-kalibrasi.md` (S29) sengaja mengunci dua penyimpangan perilaku sebagai test
+regresi, bukan memperbaikinya di tengah sprint refactor murni. `sprint-plan-d1-d4.md` menutup
+keduanya sebagai perbaikan bug eksplisit.
+
+### D3 — Status code logout salah
+
+`lib/features/auth/routes.js`: saat CSRF token salah, kode lama menulis
+`res.status(403).redirect('/dashboard')`, tapi `res.redirect()` Express menimpa status menjadi
+302. Diganti balas `res.status(403).json({ error: 'CSRF validation failed' })`, konsisten dengan
+respons `csrf.js` middleware. Tombol logout (`lib/shared/layout.js`) adalah form HTML biasa
+dengan token `_csrf` dari sesi — token nyaris selalu valid untuk pengguna yang login normal;
+jalur CSRF-gagal hanya tersentuh saat sesi rusak/kadaluarsa atau upaya spoof, jadi menampilkan
+body JSON mentah pada kondisi error ini diterima sebagai trade-off demi status code yang jujur.
+
+### D4 — `resolveNotifyMinRole()` salah pilih peran
+
+`lib/shared/telegramNotify.js`: akumulator `reduce` lama diinisialisasi `'operator'` (rank 2),
+sehingga peran yang lebih tinggi (`super_admin`, rank 3) tidak pernah menang melawan default
+itu sendiri — `TELEGRAM_APPROVAL_NOTIFY_ROLES=super_admin` tetap menotifikasi operator. Diganti
+menghitung rank minimum murni dari daftar peran yang dikonfigurasi (`Math.min` atas rank tiap
+peran, dipetakan balik ke nama peran); daftar kosong/tak valid tetap fallback ke `'operator'`
+(perilaku default tidak berubah). Peran tak dikenal tetap diperlakukan sebagai rank `operator`.
+
+### Verifikasi
+
+- `npm test` → **286/286 pass** (2 test lama diupdate assertion-nya, tidak ada test hilang).
+- `npm run lint` → exit 0; `npm run format:check` → exit 0 (prettier merapikan format baris
+  panjang di `telegramNotify.js`).
+- `npm run test:coverage` → **85,05% lines / 81,19% branches / 84,11% functions**, lulus gate
+  82/81/78 dengan margin tetap ≥3pp.
+- Commit: `c5b1095` (D3), `edc5503` (D4).
