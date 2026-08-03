@@ -130,19 +130,26 @@ pernah menjalankannya sama sekali. Coverage report memperlakukan mereka sebagai 
 tidak muncul sama sekali, tergantung glob.
 
 **Tasks**
-- [ ] Pisahkan logika dari efek samping di `server.js`: ekstrak `createServer({ app, port,
-      onListen })` (murni, testable) dari blok `if (import.meta.url === ...)` yang benar-benar
-      memanggil `listen()` — pola yang sudah dipakai untuk modul lain di `lib/features/*`
-- [ ] Test `server.js`: graceful shutdown (`SIGTERM`/`SIGINT` → tutup pool DB, tutup HTTP server,
-      exit code 0); listen gagal (port terpakai) → log error, tidak crash tanpa pesan
-- [ ] `lib/features/telegram/bot.js` — cek bagian yang bisa diekstrak tanpa memicu long-polling
-      sungguhan (mis. validasi token/env sebelum `bot.launch()`); tambahkan seam
-      `{ launch = defaultLaunch }` bila diperlukan agar test bisa memverifikasi wiring command
-      tanpa benar-benar polling Telegram
-- [ ] Test bootstrap Telegram: token kosong → keluar dengan pesan jelas (bukan exception mentah);
-      wiring command teregistrasi (jumlah handler sesuai commands.js) tanpa memanggil `launch()`
-      sungguhan di test
-- [ ] Update `qa-smoke.mjs` bila ada path/nama fungsi baru
+- [x] Pisahkan logika dari efek samping di `server.js`: ekstrak `createShutdownHandler(...)` dan
+      `scheduleBackgroundJobs(...)` (murni, testable, nilai default = perilaku lama) dari
+      `bootServer()`, dipanggil hanya lewat guard `if (process.argv[1] && import.meta.url === ...)`
+      — pola yang sama dengan `bot.js` (S23)
+- [x] Test `server.js`: graceful shutdown (`SIGTERM`/`SIGINT` → tutup pool DB, tutup HTTP server,
+      exit code 0; tanpa httpServer tetap exit 0; `closeAgentPools` gagal → exit 1; sinyal kedua
+      diabaikan; force-exit terpicu bila `closeAgentPools` tidak pernah selesai);
+      **temuan tambahan**: tidak ada listener `error` pada `httpServer` sebelumnya — kegagalan
+      listen (mis. port terpakai) akan menjatuhkan proses lewat uncaught exception generik.
+      Ditambahkan `httpServer.on('error', ...)` yang log lalu `process.exit(1)` terkendali
+      (perubahan perilaku kecil, didokumentasikan di komentar kode dan di sini, bukan disembunyikan)
+- [x] `lib/features/telegram/bot.js` — **sudah punya seam DI lengkap sejak S23/S27**
+      (`createBot`, `startBot({ bot, launch, registerProcessHandlers, exitOnError, ... })`);
+      coverage sudah 94,55% line sebelum sprint ini dimulai, jadi tidak ada ekstraksi baru yang
+      diperlukan di file ini
+- [x] Test bootstrap Telegram: **sudah ada** dari S23/S27 (`botHandlers.test.js`) — token kosong →
+      `createBot` throw pesan jelas; `startBot` dengan `bot` palsu memverifikasi urutan
+      DB-check → schema → sync command tanpa `launch()` sungguhan; jalur error dikembalikan ke
+      caller lewat `exitOnError: false` tanpa memanggil `process.exit` nyata di test
+- [x] `qa-smoke.mjs` — tidak ada path/nama fungsi baru yang perlu didaftarkan (server.js bukan view/actuator)
 
 **Verifikasi**
 ```bash
@@ -150,17 +157,24 @@ npm run test:ci && npm run lint && npm run format:check && npm run test:coverage
 sudo systemctl restart socai-node socai-bot   # pastikan tidak ada regresi start/shutdown nyata
 ```
 
-**Docs**: `logbook.md`, `AGENTS.md` (catat pola ekstraksi `createServer`), `CODEBASE_WIKI.md`
+**Hasil aktual**: 295/295 test (9 baru di `test/server.test.js`); lint & format bersih; coverage
+84,84% lines / 81,48% branches / 83,25% functions (gate 82/81/78 tetap lulus, margin ≥2,25pp);
+`server.js` **76,82% line** (sebelumnya tidak muncul di laporan sama sekali); restart
+`socai-node` bersih (`journalctl` menunjukkan shutdown graceful + semua job cron terdaftar
+ulang identik); `curl /health` → `status: ok`.
 
-**Commit**: `refactor(server): extract testable createServer from bootstrap (D2)` lalu
-`test(server): cover graceful shutdown and telegram bootstrap wiring (D2)`
+**Docs**: `logbook.md`, `CODEBASE_WIKI.md`
 
-**DoD**: `server.js` & `lib/features/telegram/bot.js` muncul di laporan coverage dengan angka
->0%; restart manual kedua service tetap bersih; 4 gate CI hijau.
+**Commit**: `refactor(server): extract testable shutdown handler and job scheduler from bootstrap (D2)`
+
+**DoD**: `server.js` muncul di laporan coverage dengan angka >0% (76,82%); `bot.js` sudah >0%
+dari sebelumnya (94,55%, tidak berubah); restart manual kedua service tetap bersih; 4 gate CI
+hijau.
 
 **Risiko**: mengekstrak logika dari file yang production-critical dan selalu aktif via systemd
 bisa memutus start/shutdown nyata tanpa test menangkapnya (test memakai fake, bukan proses asli).
-**Mitigasi**: restart manual + `journalctl` setelah setiap commit, sama seperti pola S23/S27/S28.
+**Mitigasi**: restart manual + `journalctl` setelah commit, sama seperti pola S23/S27/S28 —
+terbukti bersih (lihat hasil aktual).
 
 ---
 

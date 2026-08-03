@@ -1160,3 +1160,49 @@ peran, dipetakan balik ke nama peran); daftar kosong/tak valid tetap fallback ke
 - `npm run test:coverage` → **85,05% lines / 81,19% branches / 84,11% functions**, lulus gate
   82/81/78 dengan margin tetap ≥3pp.
 - Commit: `c5b1095` (D3), `edc5503` (D4).
+
+## Sprint 33 — Coverage Bootstrap `server.js` (D2) (3 Agustus 2026)
+
+### Konteks
+
+`server.js` (root, 161 baris) tidak pernah masuk laporan coverage `node --test` sama sekali —
+self-executing (`app.listen()` langsung saat modul dimuat) dan berada di luar glob
+`lib/**`/`test/**`. `lib/features/telegram/bot.js` sudah punya seam DI lengkap sejak S23/S27
+(94,55% line sebelum sprint ini), jadi tidak perlu disentuh lagi.
+
+### Perubahan
+
+`server.js` dipecah menjadi tiga bagian: `createShutdownHandler(...)` (murni, seluruh state
+lewat parameter dengan default = perilaku lama — `getHttpServer`, `intervalHandles`,
+`agentSessions`/`agentSessionLastUsed`/`agentSessionPromises`, `closeAgentPools`, `forceExitMs`,
+`setTimeoutFn`, `processRef`, `logger`), `scheduleBackgroundJobs(...)` (jadwal 4 job cron yang
+sebelumnya hidup di dalam callback `app.listen()`, dengan seam `trackInterval`/`jobs`/
+`setTimeoutFn`/`logger`), dan `bootServer()` yang merangkai keduanya dengan dependensi nyata.
+Eksekusi nyata dipindah ke belakang guard `if (process.argv[1] && import.meta.url === ...)`
+sehingga mengimpor `server.js` di test tidak lagi membuka port atau menyentuh database.
+
+**Temuan tambahan (bukan murni ekstraksi)**: kode lama tidak punya listener `'error'` pada
+`httpServer` — kegagalan `listen()` (mis. port terpakai) akan menjatuhkan proses lewat uncaught
+exception generik Node, bukan pesan yang jelas. Ditambahkan `httpServer.on('error', ...)` yang
+mencatat log lalu `process.exit(1)` terkendali.
+
+`test/server.test.js` (baru, 9 test): shutdown menutup HTTP server + pool + exit 0; shutdown
+tanpa `httpServer` aktif tetap exit 0; `closeAgentPools` gagal → exit 1; sinyal shutdown kedua
+diabaikan (idempotent); force-exit terpicu bila `closeAgentPools` tidak pernah selesai; jadwal
+job dengan semua interval nonaktif hanya menjalankan refresh feedback awal; semua interval aktif
+mendaftarkan 4 interval + 3 timeout awal; error di job auto-schedule dicatat tanpa melempar; dua
+pemanggilan auto-schedule bersamaan — yang kedua dilewati (guard re-entrancy tidak berubah).
+
+### Verifikasi
+
+- `npm test` → **295/295 pass** (286 + 9 baru).
+- `npm run lint` → exit 0; `npm run format:check` → exit 0.
+- `npm run test:coverage` → **84,84% lines / 81,48% branches / 83,25% functions**, tetap lulus
+  gate 82/81/78 (margin terkecil naik jadi ~2,25pp funcs — sedikit lebih mepet karena `server.js`
+  menambah baris tak-teruji di jalur `bootServer()`/guard entry point, tapi masih di atas gate).
+  `server.js` sendiri: **76,82% line** (sebelumnya tidak muncul di laporan).
+- Restart produksi: `sudo systemctl restart socai-node` → `journalctl` menunjukkan shutdown
+  graceful (`"Shutdown signal received"` → `"Shutdown complete"`) lalu boot ulang dengan keempat
+  job cron terdaftar identik (`Repliz auto schedule enabled`, `Repliz auto sync enabled`,
+  `Weekly plan cron disabled`, `Agent runs purge enabled`); `curl /health` → `status: ok`.
+- Commit: `b5570f0`.

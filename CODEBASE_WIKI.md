@@ -407,3 +407,4 @@ Rencana & status: `sprint-plan.md` · catatan sesi: `logbook.md` (Sesi 1 Agustus
 | S30-C2 | `819c693` | Memecah `test/s27Coverage.test.js` (dinamai menurut nomor sprint) menjadi test per domain: halaman web, adapter kanal, runner agent |
 | S31-C3 | `7365624` | Kalibrasi gate ke aturan aktual − 3pp: 53/73/78 → 82/81/78; margin branch 0,58pp → 3,18pp; verifikasi negatif 99/99/99 exit 1 |
 | S32-D3/D4 | `c5b1095` `edc5503` | Fix `POST /logout` CSRF gagal balas 403 JSON (bukan 302 tertimpa `res.redirect`); fix `resolveNotifyMinRole()` yang tak pernah memilih peran di atas `operator` — rank minimum kini dihitung murni dari daftar yang dikonfigurasi |
+| S33-D2 | `b5570f0` | `server.js` dipecah jadi `createShutdownHandler`/`scheduleBackgroundJobs`/`bootServer` (seam DI, guard entry point); tambah listener `error` pada `httpServer` yang sebelumnya tidak ada; `test/server.test.js` (9 test) → `server.js` masuk laporan coverage 76,82% line (sebelumnya tidak muncul) |
