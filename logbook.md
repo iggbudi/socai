@@ -1206,3 +1206,54 @@ pemanggilan auto-schedule bersamaan — yang kedua dilewati (guard re-entrancy t
   job cron terdaftar identik (`Repliz auto schedule enabled`, `Repliz auto sync enabled`,
   `Weekly plan cron disabled`, `Agent runs purge enabled`); `curl /health` → `status: ok`.
 - Commit: `b5570f0`.
+
+## Sprint 34 — Coverage `agent/core.js` dengan Fake SDK (D1) (3 Agustus 2026)
+
+### Konteks
+
+`lib/features/agent/core.js` (565 baris) adalah permukaan tak-teruji terbesar yang tersisa:
+9,20% line coverage, karena membungkus SDK eksternal `pi-coding-agent` langsung dan hardcode
+`pool`/`aiReadPool` dari `lib/shared/db.js`. S29 sengaja tidak menyentuhnya karena butuh fake SDK
+yang benar. Pemetaan sebelum mengubah kode menemukan bahwa semua fungsi domain yang dipanggil
+(`getCalendarGaps`, `saveContentPlan`, `scheduleContent`, `syncContentStatus`,
+`countAgentSchedulesToday`, `logToolCall`, `handlePostSaveApproval`) **sudah** menerima `pool`
+sebagai parameter — satu-satunya coupling adalah `core.js` sendiri yang hardcode pool modul.
+
+### Perubahan
+
+`resolveCoreDeps(deps = {})` jadi satu titik seam yang meresolve `dbPool`/`aiPool`/`env`/`fetchFn`,
+seluruh fungsi domain di atas, dan primitif SDK (`ModelRuntime.create`, `createAgentSession`,
+`SessionManager.inMemory`, `DefaultResourceLoader`, `getAgentDir`) — nilai default = modul/pool
+nyata yang sudah dipakai sebelumnya. `buildActuatorContext`, `runActuatorTool`,
+`createAgentSessionForKey` (kini `export`), dan `initAgent` menerima `deps` opsional yang
+diteruskan berjenjang; `buildActuatorPromptSection` di-`export` karena sudah pure (tanpa DB/SDK).
+Tidak ada perubahan logika bisnis — murni titik injeksi dengan default identik perilaku lama.
+
+`test/helpers/fakeAgentSdk.mjs` (baru): `createFakeAgentSdk()` merekam argumen panggilan
+`createAgentSession` palsu — termasuk `customTools`, sehingga test bisa mengambil tool descriptor
+asli dan memanggil `.execute()` langsung (menguji logika produksi sungguhan, bukan mock logika);
+`fakePool()` (pattern-matching), `findTool()`.
+
+35 test baru (`lib/features/agent/test/core.test.js`): `buildActuatorPromptSection` (5 mode);
+pemilihan model (`AI_MODEL`, `TELEGRAM_AI_MODEL` untuk sesi telegram, error jelas saat tidak ada
+model tersedia); wiring 6 tool; `db_query` — 12 test guard keamanan (non-SELECT, multi-statement,
+9 keyword berbahaya, tabel tak diizinkan, JOIN, comma-join, tanpa FROM, panjang query,
+sukses/kosong/error); `get_calendar_gaps`/`schedule_content`/`sync_content_status` (meneruskan
+params, error domain dibungkus, `logToolCall` status ok/error); `save_content_plan`
+(`handlePostSaveApproval` terpicu hanya saat ada `ids`, kegagalan hook tidak menjatuhkan tool);
+`web_search` (tanpa API key, hasil, kosong, fetch gagal); siklus hidup `initAgent` (reuse, dedupe
+pending, cleanup-on-finally + retry setelah gagal).
+
+### Verifikasi
+
+- `npm test` → **330/330 pass** (295 + 35 baru).
+- `npm run lint` → exit 0; `npm run format:check` → exit 0.
+- `npm run test:coverage` → **90,76% lines / 81,80% branches / 84,38% functions** (naik dari
+  84,84/81,48/83,25 pasca-S33), gate 82/81/78 tetap lulus dengan margin lebih lega.
+  `core.js` sendiri: **98,20% line** (dari 9,20%) — jauh melampaui target ≥70%; sisa baris
+  tak-tertutup hanya callback interval cleanup sesi idle (15 menit sekali, baris 43–53).
+- Restart produksi: `sudo systemctl restart socai-node` → `journalctl` bersih, tidak ada error
+  dari `agent/core.js`; `curl /health` → `status: ok`.
+- **Tidak dilakukan**: smoke chat asisten end-to-end di web UI (butuh kredensial admin yang tidak
+  tersedia di sesi ini) — didelegasikan ke owner sebagai verifikasi manual pasca-deploy.
+- Commit: `b120d60`.

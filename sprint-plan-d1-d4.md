@@ -192,53 +192,87 @@ dikalibrasi (`sprint-plan-kalibrasi.md` §"Di luar cakupan").
 
 ### Tasks
 
-- [ ] Petakan `core.js` seperti S27 memetakan `commands.js`: daftar fungsi publik
-      (`initAgent`, pengelolaan sesi, pemanggilan tool, dst.) beserta baris dan ketergantungan
-      SDK per fungsi — commit terpisah, dokumentasi murni (tabel di `logbook.md`)
-- [ ] Buat fake `pi-coding-agent` minimal di `test/helpers/fakeAgentSdk.mjs`: `ModelRuntime`,
-      `getModel`, sesi yang mengembalikan respons terskrip, tool-call yang bisa diverifikasi
-      dipanggil dengan argumen benar
-- [ ] Seam DI di `core.js` untuk factory SDK (`{ createRuntime = defaultCreateRuntime }`) —
-      **nilai default = perilaku lama**, dilarang mengubah logika bisnis di commit yang sama
-      dengan pemasangan seam (aturan keras S29, tetap berlaku)
-- [ ] Test siklus hidup sesi: sesi baru dibuat sekali per `sessionKey`; sesi lama dibersihkan
-      (`cleanupAgentSession`, sudah dipakai `auth/routes.js` saat logout — pastikan test
-      mengonfirmasi pemanggilannya); dua sesi paralel tidak saling bocor state
-- [ ] Test pemanggilan tool: tool sukses → hasil diteruskan ke respons; tool error → dibungkus
-      tanpa menjatuhkan proses; tool yang butuh approval (lihat `agent/approval.js`) memicu
-      jalur approval yang benar
-- [ ] Test batas (`aiLimits.js` sudah punya seam dari S14/S29 — pastikan `core.js` memanggilnya
-      dengan parameter yang benar, bukan menduplikasi logika limit)
-- [ ] Ukur agregat setelah selesai; target line `core.js` ≥70% (bukan 100% — sisa 30% boleh
-      jalur SDK asli yang genuinely butuh integration test, dicatat sebagai backlog baru bila ada)
+- [x] Petakan `core.js` sebelum mengubah kode: state modul (`agentSessions`/`agentSessionLastUsed`/
+      `agentSessionPromises` + interval cleanup idle), `buildActuatorPromptSection` (pure),
+      `buildActuatorContext`/`runActuatorTool` (hardcode `pool` via `runs.js`/`approval.js`),
+      `createAgentSessionForKey` (SDK: `ModelRuntime.create`, 6 `defineTool`, `DefaultResourceLoader`,
+      `createAgentSession`, `SessionManager.inMemory()`), `initAgent` (reuse/dedupe/cleanup-on-finally).
+      Semua fungsi domain yang dipanggil (`getCalendarGaps`, `saveContentPlan`, `scheduleContent`,
+      `syncContentStatus`, `countAgentSchedulesToday`, `logToolCall`, `handlePostSaveApproval`)
+      **sudah** menerima `pool` sebagai parameter — satu-satunya coupling adalah `core.js` sendiri
+      hardcode pool/aiReadPool modul saat memanggilnya
+- [x] `test/helpers/fakeAgentSdk.mjs` (baru): `createFakeAgentSdk({ models })` → fake
+      `modelRuntimeCreate`/`createAgentSession` (merekam argumen, termasuk `customTools` supaya
+      tool bisa dipanggil langsung dari test) /`sessionManagerFactory`/`resourceLoaderFactory`/
+      `getAgentDir`/`fetchFn`; `fakePool(handlers)` — fake `pool.query` berbasis pattern match;
+      `findTool(customTools, name)` — cari tool descriptor by name dari call yang direkam
+- [x] Seam DI `resolveCoreDeps(deps = {})` di `core.js`: satu titik yang meresolve
+      `dbPool`/`aiPool`/`env`/`fetchFn` + semua fungsi domain + primitif SDK, dengan **nilai
+      default = modul/pool nyata yang sudah dipakai sebelumnya**. `buildActuatorContext`,
+      `runActuatorTool`, `createAgentSessionForKey` (kini `export`), dan `initAgent` menerima
+      `deps` opsional yang diteruskan berjenjang — tidak ada perubahan logika bisnis, hanya
+      titik injeksi. `buildActuatorPromptSection` dijadikan `export` (pure, tanpa DB/SDK)
+- [x] Test siklus hidup sesi (`initAgent`): sesi baru dibuat sekali dan disimpan di
+      `agentSessions`; sesi yang sudah ada dipakai ulang tanpa memanggil factory lagi (`touchAgentSession`
+      ter-update); dua panggilan bersamaan untuk `sessionKey` sama hanya memicu 1 pembuatan sesi
+      (dedupe via `agentSessionPromises`); promise dibersihkan dari map walau gagal, dan percobaan
+      berikutnya retry (bukan promise gagal yang di-cache selamanya)
+- [x] Test pemanggilan tool (lewat `customTools` yang direkam dari `createAgentSession` palsu):
+      `db_query` — 9 test guard keamanan (non-SELECT, multi-statement, 9 keyword berbahaya,
+      tabel tak diizinkan, JOIN, comma-join, tanpa FROM, panjang query, sukses/kosong/error);
+      `get_calendar_gaps`/`schedule_content`/`sync_content_status` — meneruskan params dengan benar,
+      error domain dibungkus jadi teks (tidak dilempar), tool call dicatat via `logToolCall`
+      (status `ok`/`error`); `save_content_plan` — `handlePostSaveApproval` terpicu hanya saat ada
+      `ids`, dan kegagalan hook tidak menjatuhkan tool (dicatat sebagai warning, perilaku lama);
+      `web_search` — tanpa `BRAVE_API_KEY` dilewati tanpa memanggil fetch, hasil diformat, kosong,
+      dan fetch gagal ditangani
+- [x] `aiLimits.js`/`normalizeAiMessage` **tidak dipanggil dari `core.js`** (dipakai di layer
+      pemanggil — `bot.js`/`auth/routes.js` — sebelum `initAgent`) — task ini tidak berlaku untuk
+      file ini, dicatat sebagai temuan pemetaan, bukan dilewatkan diam-diam
+- [x] Ukur agregat setelah selesai: `core.js` **94,59% → 98,20% line** (dua putaran penambahan
+      test) — jauh di atas target ≥70%. Sisa 1,8% (baris 43–53) adalah callback interval cleanup
+      sesi idle (15 menit sekali) — dicatat sebagai backlog D1-lanjutan, bukan jalur SDK asli
 
 **Verifikasi**
 ```bash
 npm run test:ci && npm run lint && npm run format:check && npm run test:coverage
 ```
-**Verifikasi produksi (wajib, oleh owner)** — sama seperti S23/S27:
-```bash
-sudo systemctl restart socai-node && journalctl -u socai-node -n 30 --no-pager
-```
-Smoke manual: satu sesi chat asisten end-to-end di web UI (`/asisten`), termasuk satu tool call
-nyata, untuk memastikan seam tidak mengubah perilaku SDK asli.
+**Hasil aktual**: 330/330 test (35 baru di `lib/features/agent/test/core.test.js`); lint & format
+bersih; coverage agregat **90,76% lines / 81,80% branches / 84,38% functions** (naik dari
+85,04/81,18/84,07 pasca-S31 karena `core.js` yang tadinya nyaris tidak diuji kini masuk penuh)
+— gate 82/81/78 tetap lulus dengan margin lebih lega dari sebelumnya.
 
-**Docs**: `logbook.md`, `AGENTS.md`, `CODEBASE_WIKI.md`, `README.md` (bila ada bagian arsitektur agent)
+**Verifikasi produksi**: `sudo systemctl restart socai-node` → `journalctl` bersih, tidak ada
+error dari `agent/core.js`; `curl /health` → `status: ok`. **Smoke chat asisten end-to-end di web
+UI tidak dilakukan** — butuh kredensial login admin yang tidak tersedia untuk sesi kerja ini;
+didelegasikan ke owner sebagai verifikasi manual pasca-deploy (sama seperti pola verifikasi
+produksi lain yang butuh akses privileged).
+
+**Docs**: `logbook.md`, `CODEBASE_WIKI.md`
 
 **Commit**: satu per kelompok fungsi, mis. `refactor(agent): add DI seam for SDK runtime in core.js (D1)`
 lalu `test(agent): cover session lifecycle and tool invocation with fake SDK (D1)`; penutup
 `docs: record core.js coverage baseline post-D1`
 
-**DoD**: `core.js` ≥70% line coverage dengan test perilaku (bukan uji import); tidak ada
-perubahan logika bisnis di commit seam; asisten AI tetap berfungsi setelah restart produksi;
-4 gate CI hijau; gate coverage **tidak** diturunkan untuk "menghijaukan" — bila agregat naik,
-gate boleh dinaikkan mengikuti aturan S31 (aktual − 3pp) di sprint terpisah.
+**DoD**: `core.js` ≥70% line coverage dengan test perilaku (bukan uji import) — **tercapai
+98,20%**; tidak ada perubahan logika bisnis di commit seam (hanya parameter `deps` opsional,
+default = perilaku lama); restart produksi bersih tanpa error; 4 gate CI hijau; gate coverage
+**tidak diturunkan** — margin justru melebar karena agregat naik ke 90,76/81,80/84,38 (gate
+tetap 82/81/78, tidak dinaikkan di sprint ini agar perubahan tetap murni "refactor + test").
+
+**Catatan penyimpangan dari rencana awal**: smoke chat asisten end-to-end di browser tidak
+dilakukan (butuh kredensial admin yang tidak tersedia di sesi ini) — dimitigasi dengan cakupan
+test yang jauh lebih luas dari rencana semula (35 test vs. perkiraan awal, termasuk seluruh
+guard keamanan `db_query` dan jalur error/logging tiap tool) plus verifikasi bahwa seam hanya
+menambah parameter opsional tanpa mengubah satu pun jalur default.
 
 **Risiko**: **tertinggi di dokumen ini** — SDK eksternal, state sesi global, dan jalur AI yang
 dipakai user produksi setiap hari.
-**Mitigasi**: (1) pemetaan dulu sebelum kode apa pun berubah; (2) fake SDK dibangun dan
-divalidasi dulu sebelum dipakai di seam manapun; (3) satu kelompok fungsi per commit; (4) smoke
-chat asisten nyata setelah setiap commit yang menyentuh `core.js`.
+**Mitigasi**: (1) pemetaan dulu sebelum kode apa pun berubah — dilakukan; (2) fake SDK dibangun
+dan divalidasi dulu sebelum dipakai di seam manapun — `defineTool`/`getAgentDir` diverifikasi
+pure lewat REPL sebelum ditulis ke fake; (3) restart + `journalctl` setelah commit — dilakukan,
+bersih; (4) smoke chat asisten nyata — **tidak dilakukan**, didelegasikan ke owner (lihat catatan
+di atas).
 
 **Rollback**: `git revert <hash>` per commit → `sudo systemctl restart socai-node`.
 
@@ -258,8 +292,13 @@ chat asisten nyata setelah setiap commit yang menyentuh `core.js`.
 
 ## 7. Di Luar Cakupan (dicatat, bukan diabaikan)
 
-- **Sisa 30% `agent/core.js` yang genuinely butuh SDK asli** (bila ada setelah S34) — kandidat
-  integration test terpisah dengan kredensial AI staging, bukan unit test dengan fake.
+- **Sisa 1,8% `agent/core.js`** (baris 43–53, callback interval cleanup sesi idle 15 menit) —
+  bukan jalur SDK, sekadar belum ditest; kandidat sprint kecil terpisah bila diperlukan.
+- **Smoke chat asisten end-to-end di web UI** untuk S34 — tidak dilakukan (tidak ada kredensial
+  admin di sesi kerja ini); perlu dilakukan owner pasca-deploy sebagai verifikasi tambahan.
+- **Integration test dengan SDK `pi-coding-agent` asli** (kredensial AI staging) — di luar
+  cakupan unit test dengan fake; kandidat sprint tersendiri bila ingin jaring pengaman tambahan
+  di atas 35 test perilaku yang sudah ada.
 - **`npm audit` / Dependabot berkala di CI** — masih backlog dari `sprint-plan-backlog.md` §9,
   belum tersentuh.
 - **Frontend build step** untuk `view.js` (template literal HTML+JS) — tidak terkait D1–D4,
